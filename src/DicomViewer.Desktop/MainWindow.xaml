@@ -157,13 +157,18 @@
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="DICOM Tags" FontWeight="Bold" Margin="5"/>
-                            <ListBox x:Name="TagListBox" Grid.Row="1"
+                            <TextBox x:Name="TagSearchBox" Grid.Row="1"
+                                     TextChanged="TagSearchBox_TextChanged"
+                                     Margin="5,2"/>
+                            <ListBox x:Name="TagListBox" Grid.Row="2"
                                      ItemsSource="{Binding DicomTags}"
                                      FontFamily="Consolas" FontSize="11"
-                                     SelectionMode="Extended">
+                                     SelectionMode="Extended"
+                                     PreviewMouseRightButtonDown="TagListBox_PreviewMouseRightButtonDown">
                                 <ListBox.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Copy Selected Tag(s)"
