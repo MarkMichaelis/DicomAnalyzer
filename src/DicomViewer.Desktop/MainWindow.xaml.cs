@@ -6,6 +6,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using DicomViewer.Desktop.ViewModels;
+using DicomViewer.Core.Models;
 
 namespace DicomViewer.Desktop;
 
@@ -19,8 +20,11 @@ public partial class MainWindow : Window
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
     private Point _roiStartPoint;
-    private Rectangle? _roiRect;
+    private Shape? _roiShape;
+    private Polyline? _freeformLine;
+    private List<Point> _freeformPoints = [];
     private bool _isDrawingRoi;
+    private bool _isDrawingFreeform;
     private readonly bool _autoShutdown;
 
     public MainWindow()
@@ -199,32 +203,67 @@ public partial class MainWindow : Window
 
     #region Canvas ROI Drawing
 
+    private void RoiShapeCombo_SelectionChanged(
+        object sender, SelectionChangedEventArgs e)
+    {
+        var idx = RoiShapeCombo.SelectedIndex;
+        ViewModel.SelectedRoiShape = idx switch
+        {
+            1 => RoiShape.Ellipse,
+            2 => RoiShape.Freeform,
+            _ => RoiShape.Rectangle
+        };
+        // Cancel any in-progress freeform drawing
+        CancelFreeformDrawing();
+    }
+
     private void ImageCanvas_MouseLeftButtonDown(
         object sender, MouseButtonEventArgs e)
     {
         if (ViewModel.SelectedFile == null) return;
+
+        if (ViewModel.SelectedRoiShape == RoiShape.Freeform)
+        {
+            HandleFreeformClick(e);
+            return;
+        }
+
+        // Rectangle or Ellipse: drag to draw
         _isDrawingRoi = true;
         _roiStartPoint = e.GetPosition(ImageCanvas);
-        RemoveRoiRect();
+        RemoveRoiVisual();
         ImageCanvas.CaptureMouse();
     }
 
     private void ImageCanvas_MouseMove(
         object sender, MouseEventArgs e)
     {
+        if (_isDrawingFreeform)
+        {
+            // Update freeform preview line
+            return;
+        }
         if (!_isDrawingRoi) return;
         var pt = e.GetPosition(ImageCanvas);
-        RemoveRoiRect();
-        DrawTempRect(
-            Math.Min(_roiStartPoint.X, pt.X),
-            Math.Min(_roiStartPoint.Y, pt.Y),
-            Math.Abs(pt.X - _roiStartPoint.X),
-            Math.Abs(pt.Y - _roiStartPoint.Y));
+        RemoveRoiVisual();
+
+        var x = Math.Min(_roiStartPoint.X, pt.X);
+        var y = Math.Min(_roiStartPoint.Y, pt.Y);
+        var w = Math.Abs(pt.X - _roiStartPoint.X);
+        var h = Math.Abs(pt.Y - _roiStartPoint.Y);
+
+        if (ViewModel.SelectedRoiShape == RoiShape.Ellipse)
+            DrawTempEllipse(x, y, w, h);
+        else
+            DrawTempRect(x, y, w, h);
     }
 
     private void ImageCanvas_MouseLeftButtonUp(
         object sender, MouseButtonEventArgs e)
     {
+        if (ViewModel.SelectedRoiShape == RoiShape.Freeform)
+            return; // Freeform uses click-click-doubleclick
+
         if (!_isDrawingRoi || ViewModel.SelectedFile == null) return;
         _isDrawingRoi = false;
         ImageCanvas.ReleaseMouseCapture();
@@ -249,6 +288,83 @@ public partial class MainWindow : Window
         RedrawRoi();
     }
 
+    #region Freeform drawing
+
+    private void HandleFreeformClick(MouseButtonEventArgs e)
+    {
+        var pt = e.GetPosition(ImageCanvas);
+
+        if (e.ClickCount >= 2 && _freeformPoints.Count >= 3)
+        {
+            // Double-click completes the freeform ROI
+            FinishFreeformDrawing();
+            return;
+        }
+
+        _freeformPoints.Add(pt);
+        _isDrawingFreeform = true;
+        UpdateFreeformVisual();
+    }
+
+    private void FinishFreeformDrawing()
+    {
+        if (ViewModel.SelectedFile == null || _freeformPoints.Count < 3)
+        {
+            CancelFreeformDrawing();
+            return;
+        }
+
+        var cw = ImageCanvas.ActualWidth;
+        var ch = ImageCanvas.ActualHeight;
+        if (cw <= 0 || ch <= 0) return;
+
+        var file = ViewModel.SelectedFile;
+        var sx = file.Width / cw;
+        var sy = file.Height / ch;
+
+        var imagePoints = _freeformPoints
+            .Select(p => new double[] { p.X * sx, p.Y * sy })
+            .ToList();
+
+        ViewModel.SetFreeformRoi(imagePoints);
+        _freeformPoints.Clear();
+        _isDrawingFreeform = false;
+        RedrawRoi();
+    }
+
+    private void CancelFreeformDrawing()
+    {
+        _freeformPoints.Clear();
+        _isDrawingFreeform = false;
+        RemoveFreeformVisual();
+    }
+
+    private void UpdateFreeformVisual()
+    {
+        RemoveFreeformVisual();
+        if (_freeformPoints.Count < 2) return;
+
+        _freeformLine = new Polyline
+        {
+            Stroke = Brushes.Yellow,
+            StrokeThickness = 2,
+            StrokeDashArray = [4, 2],
+            Points = new PointCollection(_freeformPoints)
+        };
+        ImageCanvas.Children.Add(_freeformLine);
+    }
+
+    private void RemoveFreeformVisual()
+    {
+        if (_freeformLine != null)
+        {
+            ImageCanvas.Children.Remove(_freeformLine);
+            _freeformLine = null;
+        }
+    }
+
+    #endregion
+
     private void ImageCanvas_SizeChanged(
         object sender, SizeChangedEventArgs e)
     {
@@ -266,7 +382,8 @@ public partial class MainWindow : Window
 
     private void RedrawRoi()
     {
-        RemoveRoiRect();
+        RemoveRoiVisual();
+        RemoveFreeformVisual();
         var roi = ViewModel.CurrentRoi;
         if (roi == null || ViewModel.SelectedFile == null) return;
 
@@ -278,15 +395,28 @@ public partial class MainWindow : Window
         var sx = cw / file.Width;
         var sy = ch / file.Height;
 
-        DrawTempRect(
-            roi.X * sx, roi.Y * sy,
-            roi.Width * sx, roi.Height * sy);
+        switch (roi.Shape)
+        {
+            case RoiShape.Ellipse:
+                DrawTempEllipse(
+                    roi.X * sx, roi.Y * sy,
+                    roi.Width * sx, roi.Height * sy);
+                break;
+            case RoiShape.Freeform:
+                DrawFreeformRoi(roi, sx, sy);
+                break;
+            default:
+                DrawTempRect(
+                    roi.X * sx, roi.Y * sy,
+                    roi.Width * sx, roi.Height * sy);
+                break;
+        }
     }
 
     private void DrawTempRect(
         double x, double y, double w, double h)
     {
-        _roiRect = new Rectangle
+        _roiShape = new Rectangle
         {
             Stroke = Brushes.Yellow,
             StrokeThickness = 2,
@@ -295,17 +425,54 @@ public partial class MainWindow : Window
                 Color.FromArgb(30, 255, 255, 0)),
             Width = w, Height = h
         };
-        Canvas.SetLeft(_roiRect, x);
-        Canvas.SetTop(_roiRect, y);
-        ImageCanvas.Children.Add(_roiRect);
+        Canvas.SetLeft(_roiShape, x);
+        Canvas.SetTop(_roiShape, y);
+        ImageCanvas.Children.Add(_roiShape);
     }
 
-    private void RemoveRoiRect()
+    private void DrawTempEllipse(
+        double x, double y, double w, double h)
     {
-        if (_roiRect != null)
+        _roiShape = new Ellipse
         {
-            ImageCanvas.Children.Remove(_roiRect);
-            _roiRect = null;
+            Stroke = Brushes.Cyan,
+            StrokeThickness = 2,
+            StrokeDashArray = [4, 2],
+            Fill = new SolidColorBrush(
+                Color.FromArgb(30, 0, 255, 255)),
+            Width = w, Height = h
+        };
+        Canvas.SetLeft(_roiShape, x);
+        Canvas.SetTop(_roiShape, y);
+        ImageCanvas.Children.Add(_roiShape);
+    }
+
+    private void DrawFreeformRoi(RoiData roi, double sx, double sy)
+    {
+        if (roi.Points.Count < 3) return;
+        var points = roi.Points
+            .Select(p => new Point(p[0] * sx, p[1] * sy));
+
+        var polygon = new Polygon
+        {
+            Stroke = Brushes.Lime,
+            StrokeThickness = 2,
+            StrokeDashArray = [4, 2],
+            Fill = new SolidColorBrush(
+                Color.FromArgb(30, 0, 255, 0)),
+            Points = new PointCollection(points)
+        };
+        ImageCanvas.Children.Add(polygon);
+        // Store as _roiShape for cleanup
+        _roiShape = polygon;
+    }
+
+    private void RemoveRoiVisual()
+    {
+        if (_roiShape != null)
+        {
+            ImageCanvas.Children.Remove(_roiShape);
+            _roiShape = null;
         }
     }
 
