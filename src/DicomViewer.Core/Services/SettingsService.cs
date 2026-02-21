@@ -37,7 +37,13 @@ public class SettingsService
     /// <summary>Loads application-level settings.</summary>
     public AppSettings LoadAppSettings()
     {
-        var path = GetAppSettingsPath();
+        return LoadAppSettings(AppContext.BaseDirectory);
+    }
+
+    /// <summary>Loads application-level settings from a specific directory.</summary>
+    public AppSettings LoadAppSettings(string directory)
+    {
+        var path = Path.Combine(directory, AppFile);
         if (!File.Exists(path)) return new AppSettings();
         try
         {
@@ -51,16 +57,17 @@ public class SettingsService
     /// <summary>Saves application-level settings.</summary>
     public void SaveAppSettings(AppSettings settings)
     {
-        var path = GetAppSettingsPath();
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir))
-            Directory.CreateDirectory(dir);
+        SaveAppSettings(settings, AppContext.BaseDirectory);
+    }
+
+    /// <summary>Saves application-level settings to a specific directory.</summary>
+    public void SaveAppSettings(AppSettings settings, string directory)
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, AppFile);
         File.WriteAllText(path,
             JsonSerializer.Serialize(settings, JsonOpts));
     }
-
-    private static string GetAppSettingsPath() =>
-        Path.Combine(AppContext.BaseDirectory, AppFile);
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
