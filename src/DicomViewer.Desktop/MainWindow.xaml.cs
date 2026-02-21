@@ -33,6 +33,8 @@ public partial class MainWindow : Window
 
         var args = Environment.GetCommandLineArgs();
         _autoShutdown = args.Contains("--auto-shutdown");
+        if (args.Contains("--diagnostics"))
+            ViewModel.Log.IsDiagnosticsEnabled = true;
 
         // Set up playback timer and hand to ViewModel
         var timer = new DispatcherTimer();
@@ -498,4 +500,16 @@ public partial class MainWindow : Window
     }
 
     #endregion
+
+    private void CopyStatusText_Click(object sender, RoutedEventArgs e)
+    {
+        var text = ViewModel.StatusText;
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
+    }
+
+    private void StatusBar_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        // Context menu handles itself via XAML ContextMenu
+    }
 }

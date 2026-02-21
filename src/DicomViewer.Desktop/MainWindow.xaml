@@ -187,7 +187,16 @@
                     <TextBlock Grid.Column="0" Text="{Binding RoiMeanText}"
                                FontWeight="SemiBold" Margin="0,0,20,0"/>
                     <TextBlock Grid.Column="1" Text="{Binding StatusText}"
-                               Foreground="Gray"/>
+                               Foreground="Gray"
+                               x:Name="StatusBarText"
+                               MouseRightButtonUp="StatusBar_MouseRightButtonUp">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Copy Status Text" Click="CopyStatusText_Click"
+                                          InputGestureText="Ctrl+C" />
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                    </TextBlock>
                 </Grid>
             </Grid>
         </Grid>
