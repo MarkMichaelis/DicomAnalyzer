@@ -1,0 +1,26 @@
+#!/bin/bash
+# Pre-commit hook to scan for secrets using gitleaks
+
+echo "🔍 Running gitleaks security scan..."
+
+# Check if gitleaks is installed
+if ! command -v gitleaks &> /dev/null; then
+    echo "⚠️  Warning: gitleaks is not installed."
+    echo "   Install it with: brew install gitleaks (macOS) or see .github/hooks/README.md"
+    echo "   Skipping secret scan..."
+    exit 0
+fi
+
+# Run gitleaks on staged files
+gitleaks protect --staged --verbose
+
+# Check the exit code
+if [ $? -eq 1 ]; then
+    echo "❌ Gitleaks detected secrets in your staged changes!"
+    echo "   Please remove the secrets before committing."
+    echo "   To bypass this check (not recommended): git commit --no-verify"
+    exit 1
+fi
+
+echo "✅ No secrets detected!"
+exit 0
