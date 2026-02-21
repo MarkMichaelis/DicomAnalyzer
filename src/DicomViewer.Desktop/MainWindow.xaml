@@ -143,8 +143,20 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="DICOM Tags" FontWeight="Bold" Margin="5"/>
-                            <ListBox Grid.Row="1" ItemsSource="{Binding DicomTags}"
-                                     FontFamily="Consolas" FontSize="11"/>
+                            <ListBox x:Name="TagListBox" Grid.Row="1"
+                                     ItemsSource="{Binding DicomTags}"
+                                     FontFamily="Consolas" FontSize="11"
+                                     SelectionMode="Extended">
+                                <ListBox.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Copy Selected Tag(s)"
+                                                  Click="CopySelectedTags_Click"
+                                                  InputGestureText="Ctrl+C"/>
+                                        <MenuItem Header="Copy All Tags"
+                                                  Click="CopyAllTags_Click"/>
+                                    </ContextMenu>
+                                </ListBox.ContextMenu>
+                            </ListBox>
                         </Grid>
                     </Border>
                 </Grid>
