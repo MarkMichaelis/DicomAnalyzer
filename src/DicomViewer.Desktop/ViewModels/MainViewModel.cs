@@ -513,6 +513,16 @@ public partial class MainViewModel : ObservableObject
             : null;
     }
 
+    /// <summary>
+    /// Gets all ROIs for the currently selected group.
+    /// </summary>
+    public List<RoiData> GetAllRoisForGroup()
+    {
+        return SelectedGroup != null
+            ? _roiService.GetRois(SelectedGroup.GroupId)
+            : new List<RoiData>();
+    }
+
     private void ComputeRoiMean()
     {
         if (SelectedFile == null || SelectedGroup == null

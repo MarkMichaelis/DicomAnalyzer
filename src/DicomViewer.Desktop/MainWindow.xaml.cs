@@ -21,6 +21,7 @@ public partial class MainWindow : Window
 
     private Point _roiStartPoint;
     private Shape? _roiShape;
+    private readonly List<Shape> _roiShapes = new();
     private Polyline? _freeformLine;
     private List<Point> _freeformPoints = [];
     private bool _isDrawingRoi;
@@ -405,10 +406,9 @@ public partial class MainWindow : Window
 
     private void RedrawRoi()
     {
-        RemoveRoiVisual();
+        RemoveAllRoiVisuals();
         RemoveFreeformVisual();
-        var roi = ViewModel.CurrentRoi;
-        if (roi == null || ViewModel.SelectedFile == null) return;
+        if (ViewModel.SelectedFile == null || ViewModel.SelectedGroup == null) return;
 
         var file = ViewModel.SelectedFile;
         var cw = ImageCanvas.ActualWidth;
@@ -418,21 +418,25 @@ public partial class MainWindow : Window
         var sx = cw / file.Width;
         var sy = ch / file.Height;
 
-        switch (roi.Shape)
+        var rois = ViewModel.GetAllRoisForGroup();
+        foreach (var roi in rois)
         {
-            case RoiShape.Ellipse:
-                DrawTempEllipse(
-                    roi.X * sx, roi.Y * sy,
-                    roi.Width * sx, roi.Height * sy);
-                break;
-            case RoiShape.Freeform:
-                DrawFreeformRoi(roi, sx, sy);
-                break;
-            default:
-                DrawTempRect(
-                    roi.X * sx, roi.Y * sy,
-                    roi.Width * sx, roi.Height * sy);
-                break;
+            switch (roi.Shape)
+            {
+                case RoiShape.Ellipse:
+                    DrawRoiEllipse(
+                        roi.X * sx, roi.Y * sy,
+                        roi.Width * sx, roi.Height * sy);
+                    break;
+                case RoiShape.Freeform:
+                    DrawFreeformRoi(roi, sx, sy);
+                    break;
+                default:
+                    DrawRoiRect(
+                        roi.X * sx, roi.Y * sy,
+                        roi.Width * sx, roi.Height * sy);
+                    break;
+            }
         }
     }
 
@@ -453,6 +457,24 @@ public partial class MainWindow : Window
         ImageCanvas.Children.Add(_roiShape);
     }
 
+    private void DrawRoiRect(
+        double x, double y, double w, double h)
+    {
+        var shape = new Rectangle
+        {
+            Stroke = Brushes.Yellow,
+            StrokeThickness = 2,
+            StrokeDashArray = [4, 2],
+            Fill = new SolidColorBrush(
+                Color.FromArgb(30, 255, 255, 0)),
+            Width = w, Height = h
+        };
+        Canvas.SetLeft(shape, x);
+        Canvas.SetTop(shape, y);
+        ImageCanvas.Children.Add(shape);
+        _roiShapes.Add(shape);
+    }
+
     private void DrawTempEllipse(
         double x, double y, double w, double h)
     {
@@ -468,6 +490,24 @@ public partial class MainWindow : Window
         Canvas.SetLeft(_roiShape, x);
         Canvas.SetTop(_roiShape, y);
         ImageCanvas.Children.Add(_roiShape);
+    }
+
+    private void DrawRoiEllipse(
+        double x, double y, double w, double h)
+    {
+        var shape = new Ellipse
+        {
+            Stroke = Brushes.Cyan,
+            StrokeThickness = 2,
+            StrokeDashArray = [4, 2],
+            Fill = new SolidColorBrush(
+                Color.FromArgb(30, 0, 255, 255)),
+            Width = w, Height = h
+        };
+        Canvas.SetLeft(shape, x);
+        Canvas.SetTop(shape, y);
+        ImageCanvas.Children.Add(shape);
+        _roiShapes.Add(shape);
     }
 
     private void DrawFreeformRoi(RoiData roi, double sx, double sy)
@@ -486,8 +526,7 @@ public partial class MainWindow : Window
             Points = new PointCollection(points)
         };
         ImageCanvas.Children.Add(polygon);
-        // Store as _roiShape for cleanup
-        _roiShape = polygon;
+        _roiShapes.Add(polygon);
     }
 
     private void RemoveRoiVisual()
@@ -497,6 +536,14 @@ public partial class MainWindow : Window
             ImageCanvas.Children.Remove(_roiShape);
             _roiShape = null;
         }
+    }
+
+    private void RemoveAllRoiVisuals()
+    {
+        RemoveRoiVisual();
+        foreach (var shape in _roiShapes)
+            ImageCanvas.Children.Remove(shape);
+        _roiShapes.Clear();
     }
 
     #endregion
