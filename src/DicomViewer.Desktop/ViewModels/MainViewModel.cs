@@ -25,6 +25,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DicomTagService _tagService = new();
     private readonly ExcelExportService _excelExportService = new();
     private readonly FilterService _filterService = new();
+    private readonly LogService _logService = new();
 
     private List<DicomFileEntry> _allFiles = [];
     private List<TimeSeriesGroup> _allGroups = [];
@@ -100,6 +101,11 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Gets the current app settings for window position restoration.</summary>
     public AppSettings GetAppSettings() => _appSettings;
 
+    /// <summary>
+    /// Gets the log service for diagnostics and error logging.
+    /// </summary>
+    public LogService Log => _logService;
+
     /// <summary>Saves window position to app settings.</summary>
     public void SaveWindowPosition(
         double left, double top, double width, double height, string state)
@@ -133,6 +139,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Init error: {ex.Message}";
+            _logService.LogError("Initialization failed", ex);
             Console.Error.WriteLine($"INIT ERROR: {ex}");
         }
     }
@@ -195,6 +202,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
+            _logService.LogError("Failed to load directory", ex);
             Console.Error.WriteLine($"LOAD ERROR: {ex}");
         }
     }
