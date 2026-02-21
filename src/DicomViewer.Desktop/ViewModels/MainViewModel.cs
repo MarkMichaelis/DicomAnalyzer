@@ -24,6 +24,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SettingsService _settingsService = new();
     private readonly DicomTagService _tagService = new();
     private readonly ExcelExportService _excelExportService = new();
+    private readonly FilterService _filterService = new();
 
     private List<DicomFileEntry> _allFiles = [];
     private List<TimeSeriesGroup> _allGroups = [];
@@ -588,16 +589,8 @@ public partial class MainViewModel : ObservableObject
     private bool MatchesFilter(
         DicomFileEntry file, string display, string filter)
     {
-        if (display.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (_fileTagCache.TryGetValue(file.FilePath, out var tags))
-        {
-            return tags.Any(t => t.Contains(
-                filter, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return false;
+        _fileTagCache.TryGetValue(file.FilePath, out var tags);
+        return _filterService.MatchesFilter(file, display, filter, tags);
     }
 
     partial void OnFilterTextChanged(string value) => BuildTree();
