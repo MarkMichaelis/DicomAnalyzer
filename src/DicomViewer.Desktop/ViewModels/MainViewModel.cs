@@ -79,6 +79,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private RoiData? _currentRoi;
 
+    [ObservableProperty]
+    private RoiShape _selectedRoiShape = RoiShape.Rectangle;
+
     #endregion
 
     /// <summary>Tree groups displayed in the UI.</summary>
@@ -372,8 +375,8 @@ public partial class MainViewModel : ObservableObject
     #region ROI
 
     /// <summary>
-    /// Called when user completes drawing an ROI on the canvas.
-    /// Image-coordinate ROI rectangle.
+    /// Called when user completes drawing a rectangle/ellipse ROI on the canvas.
+    /// Image-coordinate ROI bounding box.
     /// </summary>
     public void SetRoi(
         double x, double y, double width, double height)
@@ -383,12 +386,40 @@ public partial class MainViewModel : ObservableObject
         var roi = new RoiData
         {
             GroupId = SelectedGroup.GroupId,
+            Shape = SelectedRoiShape,
             X = x, Y = y, Width = width, Height = height
         };
         _roiService.SetRoi(SelectedGroup.GroupId, roi);
         _roiService.SaveRois(_currentDirectory);
         CurrentRoi = roi;
-        StatusText = "ROI drawn and saved.";
+        StatusText = $"{SelectedRoiShape} ROI drawn and saved.";
+        ComputeRoiMean();
+    }
+
+    /// <summary>
+    /// Called when user completes drawing a freeform ROI.
+    /// </summary>
+    public void SetFreeformRoi(List<double[]> points)
+    {
+        if (SelectedGroup == null || points.Count < 3) return;
+
+        var minX = points.Min(p => p[0]);
+        var minY = points.Min(p => p[1]);
+        var maxX = points.Max(p => p[0]);
+        var maxY = points.Max(p => p[1]);
+
+        var roi = new RoiData
+        {
+            GroupId = SelectedGroup.GroupId,
+            Shape = RoiShape.Freeform,
+            X = minX, Y = minY,
+            Width = maxX - minX, Height = maxY - minY,
+            Points = points
+        };
+        _roiService.SetRoi(SelectedGroup.GroupId, roi);
+        _roiService.SaveRois(_currentDirectory);
+        CurrentRoi = roi;
+        StatusText = "Freeform ROI drawn and saved.";
         ComputeRoiMean();
     }
 
