@@ -1,3 +1,6 @@
+# Git worktrees
+/.worktrees/
+
 # Ignore .roi files anywhere (case-insensitive)
 **/*.roi
 
