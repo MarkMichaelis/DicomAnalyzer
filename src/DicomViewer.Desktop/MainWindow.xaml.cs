@@ -223,6 +223,24 @@ public partial class MainWindow : Window
             Clipboard.SetText(string.Join(Environment.NewLine, all));
     }
 
+    private void TagSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var filter = TagSearchBox.Text;
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(TagListBox.ItemsSource);
+        if (view == null) return;
+        if (string.IsNullOrWhiteSpace(filter))
+            view.Filter = null;
+        else
+            view.Filter = item => item is string s
+                && s.Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void TagListBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Preserve existing selection when right-clicking to open context menu
+        e.Handled = true;
+    }
+
     #endregion
 
     #region Canvas ROI Drawing
