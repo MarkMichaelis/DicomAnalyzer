@@ -1,72 +1,164 @@
-# Ultrasound DICOM ROI Application: Product Specification
+# DICOM Analysis Application: Product Specification
 
-## Overview
+## 1. Overview
 
-This application targets **ultrasound DICOM cine** data. It must enable interactive viewing, advanced ROI analytics, and integration with Excel. Key features include multi-frame ROI drawing (with undo), robust pixel-intensity measurement, motion compensation with a running MIP, and support for advanced ultrasound modes (parametric imaging and respiratory gating). 
+This project is a **single-platform .NET desktop application** for viewing and analyzing ultrasound DICOM studies.
 
-The user is an experienced C# developer relying on rapid (“vibe”) coding. The tool will be for internal/research use (non-commercial, no PHI concerns). 
+- **Platform mandate:** desktop-only, built with the latest .NET and C#.
+- **Primary runtime target:** .NET 10 + C# (latest stable language features supported by the SDK).
+- **UI framework:** WPF desktop application.
+- **Project purpose:** internal/research use.
 
-## Functional requirements
+The application starts in `Codex`, and sample studies are located in `SampleFiles` at repository root.
 
-- **Viewer:** Display multi-frame DICOM ultrasound. Support cine loop playback and synchronize multiple viewports. Implement free-scroll and frame stepping.  
-- **ROI drawing:** Allow drawing **multiple ROIs** of two types: freehand and ellipse/circle. ROIs must persist and be editable across frames and even across different files (same patient/study). Maintain each ROI as an independent annotation.  
-- **Undo:** Support undo (Ctrl+Z) for ROI drawing and editing. Each draw or delete action should be revertible by standard undo.  
-- **Pixel-intensity analytics:** Compute high-accuracy statistics within each ROI. Specifically:
-  - Support multiple intensity domains: **raw stored pixels**, **modality-rescaled** values, and **windowed (VOI)** values.  
-  - Handle ultrasound-specific considerations (e.g. gain/dynamic range normalization). [＊Point: use established libraries to apply DICOM LUTs and windowing【6†L4-L9】【7†L39-L46】.*]  
-- **Export to Excel:** Export ROI measurements (area, mean, standard deviation, etc.) to Excel-compatible files. Provide rich table data for pivot tables and charts. Include a sample Excel report or template. (Complex pivot/chart automation can be post-processed; initial output can be CSV or simple XLSX.)  
-- **Batch import:** Import and manage large directories of DICOM files. Provide a means to scan a folder or index files efficiently. Loading should handle thousands of images (e.g. one-time indexing).  
-- **Motion compensation:** Detect and correct patient motion between frames/files. Implement rigid/affine (and optionally deformable) registration so that tracked ROIs stay consistent over time. Allow the user to manually adjust if needed.  
-- **Running MIP:** Create a **running maximum-intensity-projection** across frames: align each frame via registration, then accumulate pixelwise maxima into a composite image. This MIP updates as new frames come in. The ROI positions should also be tracked into the MIP view.  
-- **Parametric imaging:** Support calculation and display of parametric ultrasound maps (e.g. contrast kinetics, elastography, or other derived quantitative maps from the ROI intensity data). The specific modalities/parameters (strain, time-intensity curves, etc.) should be configurable.  
-- **Respiratory gating:** Allow gating or binning of frames based on respiratory phase. This may involve reading external triggers (if available) or manual marking of inhale/exhale frames, to only analyze motion within a consistent breathing phase.  
-- **Persistence:** Save and load session data (including ROIs, applied settings, and analysis results) between runs. Use an internal format (JSON or similar) and allow optional export to DICOM formats (SR or GSPS) for interoperability.  
-- **User interface:** Provide an intuitive UI with at least two synchronized viewports (for ROI reuse). Include playback controls, ROI editing tools, and a measurement panel. Implement standard UI conventions (Undo/Redo, toolbars).  
+## 2. Scope
 
-## Non-functional requirements
+The app must provide:
 
-- **Platform choice:** Must decide between .NET (WPF/WinUI), Python (Qt), or Web (Electron/React). Consider the best available open DICOM viewer libraries: OHIF/Cornerstone (Web), fo-dicom (C#), pydicom/VTK (Python).  
-- **Performance:** Target smooth interactive playback (~30 fps) for a single viewport with up to ~1000 frames. Large datasets (10k+ images) must load within reasonable time (minutes for indexing).  
-- **Cross-platform:** If using .NET, consider .NET 6+ for cross-platform (Avalonia/WPF). Python/PyQt is cross-platform; Web (Electron) runs on all desktops.  
-- **Licensing:** Use permissively licensed (MIT/BSD/Apache) components. (OHIF/Cornerstone, fo-dicom, pydicom are permissive; Orthanc is GPL/AGPL, but as an offline server it’s allowed for internal use.)  
-- **Rapid prototyping:** Favor libraries and patterns that allow “vibe coding” – quick iteration and live reload. For example, a React-based Web UI or a hot-reloading Python GUI.  
+- DICOM loading and cine playback.
+- Time-series grouping by acquisition time.
+- ROI drawing and persistence.
+- ROI intensity statistics.
+- DICOM tag inspection.
+- CEUS/SHI classification using Pixel Spacing.
+- Persistent per-folder settings and last directory recall.
 
-## Architecture and implementation notes
+## 3. Functional Requirements
 
-Based on these requirements, likely architecture options include:
+### 3.1 DICOM Loading and Display
 
-- **Web-based app (Electron + OHIF):** Leverage OHIF/Cornerstone for viewer and ROI tools【1†L9-L13】. Use DICOMweb (Orthanc) or local file API for data. Implement motion/MIP in a background service (Node or Python) or via WebAssembly (ITK-wasm). Excel export via CSV/JavaScript library.  
-- **.NET desktop:** Use fo-dicom for DICOM IO and rendering; build custom UI in WPF/WinUI. Use OpenCvSharp (Apache-2) or SimpleITK C# for registration/MIP; ClosedXML/EPPlus for Excel.  
-- **Python desktop:** Use pydicom and a GUI toolkit (e.g. PyQt + VTK). Registration via SimpleITK/elastix, image display via numpy arrays and PyQt OpenGL. Pandas/openpyxl for Excel.  
+- Load DICOM files from a selected folder.
+- Display images in a scaled canvas/image surface.
+- Support multi-frame DICOM as cine/video.
+- Provide Previous/Next navigation and playback controls.
+- Provide FPS slider for playback speed.
 
-The choice should prioritize available open ROI tools (favoring Web) vs. language comfort (favoring .NET). If rapid iteration is critical and sample data is available, a Web/Electron approach can leverage OHIF out-of-the-box features【1†L9-L13】.  
+### 3.2 UI Layout
 
-## Questions / open items
+- **Top bar:** folder path input, Browse, Reload, Settings.
+- **Left panel:** tree control of grouped files.
+- **Right panel:**
+  - Controls row (Play, Previous, Next, Clear ROI, FPS + slider).
+  - Selected file label.
+  - Vertical split between image viewer and tag panel.
+  - ROI Mean display and status label.
 
-- What ultrasound parametric maps are specifically required (e.g. elastography, contrast kinetics)?  
-- How will respiratory phase be captured (external trigger vs image-based)?  
-- What file sizes or frame counts are expected for “large directories”?  
+### 3.3 Time-Series Grouping
 
----
+- Group by `AcquisitionDateTime` into contiguous sequences.
+- Start a new group when gap between consecutive files exceeds time window.
+- Default time window: **60 seconds**.
+- Group label shows start-end time when applicable.
+- Files without `AcquisitionDateTime` are grouped together in an unknown-time group.
+- Tree groups are collapsed by default.
+- Selecting a group node selects/displays first file in that group.
 
-## Work Breakdown Structure
+### 3.4 DICOM Tag Viewer
 
-Below is a table of features broken into Epics, User Stories, and example technical tasks. Items are roughly sorted with higher-complexity features last.
+- Display all tags for selected file, excluding PixelData.
+- Render as: `GGGG,EEEE Name: Value`.
 
-| Feature/Epic                      | User Story (Scrum)                                  | Technical Tasks (AI-level)                         |
-|-----------------------------------|-----------------------------------------------------|----------------------------------------------------|
-| **Basic DICOM Viewer**            | As a user, I want to load and view ultrasound DICOM cine so I can scroll through frames. | - Integrate DICOM reading (fo-dicom/pydicom) <br> - Render frames in UI <br> - Implement playback controls |
-| **Multi-frame ROI Drawing**       | As a user, I want to draw freehand and ellipse ROIs on images. | - Add freehand and ellipse ROI tools (Cornerstone / custom canvas) <br> - Track ROI coordinates in patient space <br> - Enable moving/resizing shapes |
-| **ROI Persistence & Undo**        | As a user, I want ROIs to persist across frames and be undoable. | - Store ROIs in session state (JSON) <br> - Implement Undo stack (Ctrl+Z) for ROI add/delete/edit <br> - Reload ROIs when switching frames/files |
-| **Pixel-Intensity Stats**         | As a user, I want accurate stats (mean, max, etc.) for each ROI in various intensity modes. | - Fetch raw pixel data for ROI masks <br> - Apply DICOM rescale and VOI LUT algorithms【6†L4-L9】【7†L39-L46】 <br> - Compute stats and normalize (gain) |
-| **Excel Export**                 | As a user, I want ROI stats exported to Excel/CSV for analysis. | - Create export pipeline: compile ROI stats into CSV/Excel format <br> - Implement Excel writing (ClosedXML/ExcelJS/pandas) <br> - Include sample pivot chart in template |
-| **Directory Import**              | As a user, I want to import an entire folder of DICOMs at once. | - Implement folder chooser and file scanning <br> - Index DICOM meta for quick lookup <br> - Handle incremental loading and large file sets |
-| **Motion Compensation**           | As a user, I want frames aligned so that ROIs track patient anatomy. | - Prototype rigid registration between frames (ITK/Elastix) <br> - Optimize for speed or allow offline batch <br> - Integrate into pipeline after loading |
-| **Running MIP**                   | As a user, I want to view a running MIP that accumulates max pixel values. | - After registration, resample images onto ref grid <br> - Apply pixelwise maximum filter (SimpleITK MaxImageFilter) <br> - Display MIP and update per new frame |
-| **Parametric Imaging**            | As a user, I want to compute/display parametric maps (e.g. elastography). | - Integrate processing algorithms (e.g. strain calc, time-intensity analysis) <br> - Generate pseudo-color maps and overlay <br> - Allow saving parametric images |
-| **Respiratory Gating**           | As a user, I want to limit analysis to specific breathing phases. | - Accept respiration trigger input (file or manual) <br> - Implement frame binning by respiratory cycle <br> - Provide gating controls in UI |
-| **Advanced Integration**         | As a user, I want the tool to seamlessly integrate all features with good UX. | - Synchronize multiple viewports (e.g. cine + MIP) <br> - Optimize performance (multi-threading/GPU) <br> - Polish UI elements and help/documentation |
+### 3.5 ROI Drawing and Persistence
 
-In this table, easier features (basic viewing, ROI tools) are first, while more complex image-processing features (registration, MIP, parametric, gating) are last. Each user story would break into further detailed tasks in actual sprint planning.
+- Draw one rectangular ROI via click-drag.
+- ROI coordinates are stored in image space (not canvas space).
+- ROI applies to all files in the current time-series group.
+- Starting a new ROI replaces prior ROI for that group.
+- Clear ROI removes ROI for all files in current group.
+- Persist ROI data in `dicom_viewer.roi` in the loaded folder.
+- Do not read legacy per-image `.roi` files.
 
-**Sources:** We built on knowledge of medical imaging libraries and standards: Cornerstone/OHIF ROI tools【1†L9-L13】, fo-dicom pixel handling【7†L39-L46】, Excel libraries【14†L38-L43】【16†L1-L7】, and registration/MIP filters【6†L4-L9】. Each feature will leverage these open-source components and follow DICOM best practices.
+### 3.6 ROI Statistics
+
+- Compute per-file ROI mean intensity across all frames.
+- UI shows the selected file’s mean intensity (not group average).
+- Update ROI mean immediately after file load and ROI draw.
+- Compute/update other files’ group statistics in the background.
+
+### 3.7 CEUS/SHI Classification
+
+- Classify by closest distance to configurable target spacings.
+- CEUS default target: **0.5**.
+- SHI default target: **0.3**.
+- Append `(SHI)` to SHI files in the tree.
+- Pixel spacing sources (in order):
+  - `PixelSpacing`
+  - `ImagerPixelSpacing`
+  - DICOM tag `(0028,0030)`
+- Handle values in formats such as `0.3\\0.3` and `[0.3, 0.3]`.
+
+### 3.8 Filtering
+
+- Filter box under the tree.
+- Case-insensitive substring filter against tag text and file metadata shown in tree.
+
+### 3.9 Settings and Persistence
+
+- All persistent analysis data is stored in the loaded folder.
+- Per-folder settings file: `dicom_viewer_directory.settings` with:
+  - `timeWindowSeconds`
+  - `ceusSpacing`
+  - `shiSpacing`
+- ROI data file: `dicom_viewer.roi`.
+- App-level settings file: `app_settings.json` next to `dicom_viewer.py` in `Codex`.
+  - Stores `lastLoadedDirectory`.
+  - On startup, auto-load if directory still exists.
+
+### 3.10 Settings Dialog
+
+- Opened from Settings button.
+- Editable fields:
+  - Time Window (seconds)
+  - CEUS PixelSpacing target
+  - SHI PixelSpacing target
+- Saving persists settings and rebuilds the group/file tree.
+
+## 4. Non-Functional Requirements
+
+- Use latest .NET/C# supported by project SDK.
+- Keep UI responsive during image load and stats computation.
+- Run long operations on background threads; marshal UI updates to main thread.
+- Maintain stable behavior for studies with up to ~1000 frames per file.
+- Prefer permissive OSS dependencies suitable for internal research usage.
+
+## 5. Technical Stack
+
+- **Application:** WPF desktop
+- **Runtime:** .NET 10
+- **Language:** C# (latest supported)
+- **DICOM library:** fo-dicom
+- **Testing:** xUnit (and Moq where needed)
+
+## 6. Testing Requirements
+
+### 6.1 Classification Test
+
+- Add/maintain CEUS classification unit test using files from `SampleFiles\\DICOM 20251125`.
+- Expected CEUS files:
+  - `IM_0001`, `IM_0012`, `IM_0023`, `IM_0032`, `IM_0043`, `IM_0054`, `IM_0065`,
+    `IM_0076`, `IM_0087`, `IM_0098`, `IM_0108`, `IM_0119`, `IM_0130`, `IM_0141`,
+    `IM_0152`, `IM_0163`, `IM_0164`.
+
+### 6.2 Time-Series Grouping Test
+
+- Use a reduced sample subset for speed.
+- Validate group counts for 60-second and 600-second windows.
+
+### 6.3 ROI Behavior Tests
+
+- Verify group-wide ROI apply/clear behavior.
+- Verify mean intensity is computed and persisted per file.
+- Verify selected-file ROI mean is displayed correctly.
+
+## 7. Deferred / Out-of-Scope for This Version
+
+The following ideas are explicitly deferred to keep the desktop implementation focused:
+
+- Web/OHIF/Cornerstone architecture.
+- DICOMweb/Orthanc integration.
+- Advanced motion compensation workflows.
+- Running MIP pipeline.
+- Parametric imaging and respiratory gating.
+- DICOM SR/GSPS export.
+
+These can be added as future milestones after the baseline desktop requirements above are complete.
