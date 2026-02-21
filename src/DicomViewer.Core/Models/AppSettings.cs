@@ -22,4 +22,7 @@ public class AppSettings
 
     /// <summary>Window state (Normal, Maximized, Minimized).</summary>
     public string? WindowState { get; set; }
+
+    /// <summary>Last selected tree node path for restore on reload.</summary>
+    public string? LastSelectedNodePath { get; set; }
 }

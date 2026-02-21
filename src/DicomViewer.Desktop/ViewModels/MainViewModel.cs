@@ -184,7 +184,10 @@ public partial class MainViewModel : ObservableObject
             HasFiles = _allFiles.Count > 0;
 
             if (_allFiles.Count > 0)
-                SelectFileInternal(_allFiles[0]);
+            {
+                if (!TryRestoreSelectedNode())
+                    SelectFileInternal(_allFiles[0]);
+            }
 
             StatusText = $"Loaded {_allFiles.Count} files in "
                 + $"{_allGroups.Count} groups.";
@@ -322,6 +325,55 @@ public partial class MainViewModel : ObservableObject
     {
         if (group.Files.Count > 0)
             SelectFileInternal(group.Files[0]);
+    }
+
+    /// <summary>
+    /// Saves the currently selected node path so it can be restored later.
+    /// Path format: "GroupLabel/FileName" for files, "GroupLabel" for groups.
+    /// </summary>
+    public void SaveSelectedNodePath(string? nodePath)
+    {
+        _appSettings.LastSelectedNodePath = nodePath;
+        _settingsService.SaveAppSettings(_appSettings);
+    }
+
+    /// <summary>
+    /// Builds a node path string for a file within a group.
+    /// </summary>
+    public static string BuildNodePath(string groupLabel, string? fileName = null)
+    {
+        return fileName != null ? $"{groupLabel}/{fileName}" : groupLabel;
+    }
+
+    /// <summary>
+    /// Tries to restore the previously selected node from app settings.
+    /// Returns true if a node was found and selected.
+    /// </summary>
+    private bool TryRestoreSelectedNode()
+    {
+        var path = _appSettings.LastSelectedNodePath;
+        if (string.IsNullOrEmpty(path)) return false;
+
+        var parts = path.Split('/', 2);
+        var groupLabel = parts[0];
+        var fileName = parts.Length > 1 ? parts[1] : null;
+
+        var group = _allGroups.FirstOrDefault(g =>
+            g.GroupId == groupLabel || g.Files.Any(f => f.FileName == fileName));
+        if (group == null) return false;
+
+        if (fileName != null)
+        {
+            var file = group.Files.FirstOrDefault(f => f.FileName == fileName);
+            if (file != null)
+            {
+                SelectFileInternal(file);
+                return true;
+            }
+        }
+
+        SelectGroup(group);
+        return true;
     }
 
     /// <summary>
