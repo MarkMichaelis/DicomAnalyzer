@@ -23,13 +23,9 @@ public partial class MainViewModel : ObservableObject
     private readonly RoiService _roiService = new();
     private readonly SettingsService _settingsService = new();
     private readonly DicomTagService _tagService = new();
-    private readonly ExcelExportService _excelExportService = new();
-    private readonly FilterService _filterService = new();
-    private readonly LogService _logService = new();
 
     private List<DicomFileEntry> _allFiles = [];
     private List<TimeSeriesGroup> _allGroups = [];
-    private Dictionary<string, List<string>> _fileTagCache = [];
     private string _currentDirectory = string.Empty;
     private AppSettings _appSettings = new();
     private System.Windows.Threading.DispatcherTimer? _playbackTimer;
@@ -82,9 +78,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private RoiData? _currentRoi;
 
-    [ObservableProperty]
-    private RoiShape _selectedRoiShape = RoiShape.Rectangle;
-
     #endregion
 
     /// <summary>Tree groups displayed in the UI.</summary>
@@ -96,26 +89,6 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         _appSettings = _settingsService.LoadAppSettings();
-    }
-
-    /// <summary>Gets the current app settings for window position restoration.</summary>
-    public AppSettings GetAppSettings() => _appSettings;
-
-    /// <summary>
-    /// Gets the log service for diagnostics and error logging.
-    /// </summary>
-    public LogService Log => _logService;
-
-    /// <summary>Saves window position to app settings.</summary>
-    public void SaveWindowPosition(
-        double left, double top, double width, double height, string state)
-    {
-        _appSettings.WindowLeft = left;
-        _appSettings.WindowTop = top;
-        _appSettings.WindowWidth = width;
-        _appSettings.WindowHeight = height;
-        _appSettings.WindowState = state;
-        _settingsService.SaveAppSettings(_appSettings);
     }
 
     /// <summary>
@@ -139,7 +112,6 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Init error: {ex.Message}";
-            _logService.LogError("Initialization failed", ex);
             Console.Error.WriteLine($"INIT ERROR: {ex}");
         }
     }
@@ -179,22 +151,11 @@ public partial class MainViewModel : ObservableObject
             _appSettings.LastLoadedDirectory = dir;
             _settingsService.SaveAppSettings(_appSettings);
 
-            // Cache tags per file for filter search
-            _fileTagCache = [];
-            foreach (var file in _allFiles)
-            {
-                _fileTagCache[file.FilePath] =
-                    _tagService.GetTags(file.FilePath);
-            }
-
             BuildTree();
             HasFiles = _allFiles.Count > 0;
 
             if (_allFiles.Count > 0)
-            {
-                if (!TryRestoreSelectedNode())
-                    SelectFileInternal(_allFiles[0]);
-            }
+                SelectFileInternal(_allFiles[0]);
 
             StatusText = $"Loaded {_allFiles.Count} files in "
                 + $"{_allGroups.Count} groups.";
@@ -202,7 +163,6 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
-            _logService.LogError("Failed to load directory", ex);
             Console.Error.WriteLine($"LOAD ERROR: {ex}");
         }
     }
@@ -257,45 +217,6 @@ public partial class MainViewModel : ObservableObject
         StatusText = "ROI cleared.";
     }
 
-    /// <summary>Undo the last ROI change for the current group (Ctrl+Z).</summary>
-    [RelayCommand]
-    private void UndoRoi()
-    {
-        if (SelectedGroup == null) return;
-        if (_roiService.UndoRoi(SelectedGroup.GroupId))
-        {
-            _roiService.SaveRois(_currentDirectory);
-            UpdateRoiDisplay();
-            ComputeRoiMean();
-            StatusText = "ROI undone.";
-        }
-        else
-        {
-            StatusText = "Nothing to undo.";
-        }
-    }
-
-    /// <summary>Exports ROI intensity data to an Excel file.</summary>
-    public void ExportToExcel(string outputPath)
-    {
-        try
-        {
-            var rois = new Dictionary<string, RoiData>();
-            foreach (var group in _allGroups)
-            {
-                var roi = _roiService.GetRoi(group.GroupId);
-                if (roi != null) rois[group.GroupId] = roi;
-            }
-            _excelExportService.ExportIntensityData(
-                outputPath, _allGroups, rois);
-            StatusText = $"Exported to {Path.GetFileName(outputPath)}";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Export error: {ex.Message}";
-        }
-    }
-
     /// <summary>Applies the filter to the tree.</summary>
     [RelayCommand]
     private void ApplyFilter() => BuildTree();
@@ -333,55 +254,6 @@ public partial class MainViewModel : ObservableObject
     {
         if (group.Files.Count > 0)
             SelectFileInternal(group.Files[0]);
-    }
-
-    /// <summary>
-    /// Saves the currently selected node path so it can be restored later.
-    /// Path format: "GroupLabel/FileName" for files, "GroupLabel" for groups.
-    /// </summary>
-    public void SaveSelectedNodePath(string? nodePath)
-    {
-        _appSettings.LastSelectedNodePath = nodePath;
-        _settingsService.SaveAppSettings(_appSettings);
-    }
-
-    /// <summary>
-    /// Builds a node path string for a file within a group.
-    /// </summary>
-    public static string BuildNodePath(string groupLabel, string? fileName = null)
-    {
-        return fileName != null ? $"{groupLabel}/{fileName}" : groupLabel;
-    }
-
-    /// <summary>
-    /// Tries to restore the previously selected node from app settings.
-    /// Returns true if a node was found and selected.
-    /// </summary>
-    private bool TryRestoreSelectedNode()
-    {
-        var path = _appSettings.LastSelectedNodePath;
-        if (string.IsNullOrEmpty(path)) return false;
-
-        var parts = path.Split('/', 2);
-        var groupLabel = parts[0];
-        var fileName = parts.Length > 1 ? parts[1] : null;
-
-        var group = _allGroups.FirstOrDefault(g =>
-            g.GroupId == groupLabel || g.Files.Any(f => f.FileName == fileName));
-        if (group == null) return false;
-
-        if (fileName != null)
-        {
-            var file = group.Files.FirstOrDefault(f => f.FileName == fileName);
-            if (file != null)
-            {
-                SelectFileInternal(file);
-                return true;
-            }
-        }
-
-        SelectGroup(group);
-        return true;
     }
 
     /// <summary>
@@ -458,8 +330,8 @@ public partial class MainViewModel : ObservableObject
     #region ROI
 
     /// <summary>
-    /// Called when user completes drawing a rectangle/ellipse ROI on the canvas.
-    /// Image-coordinate ROI bounding box.
+    /// Called when user completes drawing an ROI on the canvas.
+    /// Image-coordinate ROI rectangle.
     /// </summary>
     public void SetRoi(
         double x, double y, double width, double height)
@@ -469,40 +341,12 @@ public partial class MainViewModel : ObservableObject
         var roi = new RoiData
         {
             GroupId = SelectedGroup.GroupId,
-            Shape = SelectedRoiShape,
             X = x, Y = y, Width = width, Height = height
         };
         _roiService.SetRoi(SelectedGroup.GroupId, roi);
         _roiService.SaveRois(_currentDirectory);
         CurrentRoi = roi;
-        StatusText = $"{SelectedRoiShape} ROI drawn and saved.";
-        ComputeRoiMean();
-    }
-
-    /// <summary>
-    /// Called when user completes drawing a freeform ROI.
-    /// </summary>
-    public void SetFreeformRoi(List<double[]> points)
-    {
-        if (SelectedGroup == null || points.Count < 3) return;
-
-        var minX = points.Min(p => p[0]);
-        var minY = points.Min(p => p[1]);
-        var maxX = points.Max(p => p[0]);
-        var maxY = points.Max(p => p[1]);
-
-        var roi = new RoiData
-        {
-            GroupId = SelectedGroup.GroupId,
-            Shape = RoiShape.Freeform,
-            X = minX, Y = minY,
-            Width = maxX - minX, Height = maxY - minY,
-            Points = points
-        };
-        _roiService.SetRoi(SelectedGroup.GroupId, roi);
-        _roiService.SaveRois(_currentDirectory);
-        CurrentRoi = roi;
-        StatusText = "Freeform ROI drawn and saved.";
+        StatusText = "ROI drawn and saved.";
         ComputeRoiMean();
     }
 
@@ -511,16 +355,6 @@ public partial class MainViewModel : ObservableObject
         CurrentRoi = SelectedGroup != null
             ? _roiService.GetRoi(SelectedGroup.GroupId)
             : null;
-    }
-
-    /// <summary>
-    /// Gets all ROIs for the currently selected group.
-    /// </summary>
-    public List<RoiData> GetAllRoisForGroup()
-    {
-        return SelectedGroup != null
-            ? _roiService.GetRois(SelectedGroup.GroupId)
-            : new List<RoiData>();
     }
 
     private void ComputeRoiMean()
@@ -641,7 +475,8 @@ public partial class MainViewModel : ObservableObject
                     : file.FileName;
 
                 if (!string.IsNullOrEmpty(FilterText)
-                    && !MatchesFilter(file, display, FilterText))
+                    && !display.Contains(FilterText,
+                        StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 vm.Children.Add(new TreeFileViewModel(file, display));
@@ -650,17 +485,6 @@ public partial class MainViewModel : ObservableObject
             if (vm.Children.Count > 0 || string.IsNullOrEmpty(FilterText))
                 TreeGroups.Add(vm);
         }
-    }
-
-    /// <summary>
-    /// Checks if a file matches the filter text against display name,
-    /// DICOM tag names, and DICOM tag values.
-    /// </summary>
-    private bool MatchesFilter(
-        DicomFileEntry file, string display, string filter)
-    {
-        _fileTagCache.TryGetValue(file.FilePath, out var tags);
-        return _filterService.MatchesFilter(file, display, filter, tags);
     }
 
     partial void OnFilterTextChanged(string value) => BuildTree();
