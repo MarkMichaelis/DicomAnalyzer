@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace DicomViewer.Web;
+namespace DicomViewer.Desktop;
 
 /// <summary>
 /// Interaction logic for App.xaml
