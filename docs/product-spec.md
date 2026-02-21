@@ -123,11 +123,24 @@ The app must provide:
 
 ## 5. Technical Stack
 
-- **Application:** WPF desktop
+- **Application:** WPF desktop using **MVVM** (Model–View–ViewModel) architecture
 - **Runtime:** .NET 10
 - **Language:** C# (latest supported)
-- **DICOM library:** fo-dicom
-- **Testing:** xUnit (and Moq where needed)
+- **MVVM toolkit:** CommunityToolkit.Mvvm 8.4.0 (ObservableObject, RelayCommand, ObservableProperty source generators)
+- **DICOM library:** fo-dicom 5.2.5
+- **Image rendering:** WriteableBitmap with unsafe pixel copy from fo-dicom IImage
+- **Testing:** xUnit 2.9.3 (and Moq 4.20.72 where needed)
+- **Solution format:** .slnx (new .NET 10 format)
+
+### 5.1 Architecture
+
+The application follows a strict MVVM pattern:
+
+- **Models** (`DicomViewer.Core/Models/`): Pure data classes — `DicomFileEntry`, `TimeSeriesGroup`, `RoiData`, `FolderSettings`, `AppSettings`, `FileClassification`.
+- **Services** (`DicomViewer.Core/Services/`): All business logic — `DicomFileService`, `ClassificationService`, `TimeSeriesGroupingService`, `RoiService`, `RoiStatisticsService`, `SettingsService`, `DicomTagService`.
+- **ViewModels** (`DicomViewer.Web/ViewModels/`): `MainViewModel` (primary), `SettingsViewModel`, `TreeGroupViewModel`, `TreeFileViewModel`. Use CommunityToolkit.Mvvm source generators for observable properties and commands.
+- **Views** (`DicomViewer.Web/`): `MainWindow.xaml`, `SettingsDialog.xaml`. Minimal code-behind — only UI-specific interactions (canvas ROI drawing, file dialogs, tree selection routing).
+- **Core library** (`DicomViewer.Core`): Shared between WPF host and test project. Contains all models and services with no WPF dependencies.
 
 ## 6. Testing Requirements
 
@@ -150,7 +163,13 @@ The app must provide:
 - Verify mean intensity is computed and persisted per file.
 - Verify selected-file ROI mean is displayed correctly.
 
-## 7. Deferred / Out-of-Scope for This Version
+## 8. Known Limitations
+
+- fo-dicom pixel rendering in headless (non-WPF) test environments returns all-black pixels. ROI mean intensity unit tests verify non-negative rather than positive values. Full rendering validation must occur in the WPF context.
+- fo-dicom.Imaging.ImageSharp package does not support net10.0. Frame rendering uses WriteableBitmap with unsafe pixel-by-pixel copy from `IImage.GetPixel()`.
+- App settings are stored next to the application binary (`AppContext.BaseDirectory`), not in a user profile directory.
+
+## 9. Deferred / Out-of-Scope for This Version
 
 The following ideas are explicitly deferred to keep the desktop implementation focused:
 
