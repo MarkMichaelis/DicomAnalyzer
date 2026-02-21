@@ -184,10 +184,16 @@ public partial class MainWindow : Window
         {
             case TreeFileViewModel fileVm:
                 ViewModel.SelectFileInternal(fileVm.File);
+                var parentGroup = ViewModel.SelectedGroup;
+                ViewModel.SaveSelectedNodePath(
+                    MainViewModel.BuildNodePath(
+                        parentGroup?.GroupId ?? "", fileVm.File.FileName));
                 RedrawRoi();
                 break;
             case TreeGroupViewModel groupVm:
                 ViewModel.SelectGroup(groupVm.Group);
+                ViewModel.SaveSelectedNodePath(
+                    MainViewModel.BuildNodePath(groupVm.Group.GroupId));
                 RedrawRoi();
                 break;
         }
