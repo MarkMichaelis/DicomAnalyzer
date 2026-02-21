@@ -26,6 +26,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBox Grid.Column="0" Margin="0,0,5,0"
                      Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
@@ -35,7 +36,10 @@
                     Click="BrowseButton_Click"/>
             <Button Grid.Column="2" Content="Reload" Padding="10,2" Margin="0,0,5,0"
                     Command="{Binding ReloadCommand}"/>
-            <Button Grid.Column="3" Content="Settings" Padding="10,2"
+            <Button Grid.Column="3" Content="Export Excel" Padding="10,2" Margin="0,0,5,0"
+                    Click="ExportExcelButton_Click"
+                    IsEnabled="{Binding HasFiles}"/>
+            <Button Grid.Column="4" Content="Settings" Padding="10,2"
                     Click="SettingsButton_Click"/>
         </Grid>
 

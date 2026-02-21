@@ -142,6 +142,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportExcelButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export ROI Data to Excel",
+            Filter = "Excel Files (*.xlsx)|*.xlsx",
+            DefaultExt = ".xlsx",
+            FileName = "roi_intensity_data.xlsx"
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            ViewModel.ExportToExcel(dialog.FileName);
+        }
+    }
+
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var settingsVm = new SettingsViewModel();
