@@ -32,6 +32,10 @@
         "Copy-Item": true,
         "Get-Module": true,
         "Remove-Module": true,
-        "Invoke-ScriptAnalyzer": true
+        "Invoke-ScriptAnalyzer": true,
+        "/^dotnet --version$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
