@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly RoiService _roiService = new();
     private readonly SettingsService _settingsService = new();
     private readonly DicomTagService _tagService = new();
+    private readonly ExcelExportService _excelExportService = new();
 
     private List<DicomFileEntry> _allFiles = [];
     private List<TimeSeriesGroup> _allGroups = [];
@@ -259,6 +260,27 @@ public partial class MainViewModel : ObservableObject
         else
         {
             StatusText = "Nothing to undo.";
+        }
+    }
+
+    /// <summary>Exports ROI intensity data to an Excel file.</summary>
+    public void ExportToExcel(string outputPath)
+    {
+        try
+        {
+            var rois = new Dictionary<string, RoiData>();
+            foreach (var group in _allGroups)
+            {
+                var roi = _roiService.GetRoi(group.GroupId);
+                if (roi != null) rois[group.GroupId] = roi;
+            }
+            _excelExportService.ExportIntensityData(
+                outputPath, _allGroups, rois);
+            StatusText = $"Exported to {Path.GetFileName(outputPath)}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Export error: {ex.Message}";
         }
     }
 
