@@ -36,6 +36,8 @@
         "/^dotnet --version$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "dotnet build": true,
+        "dotnet test": true
     }
 }
