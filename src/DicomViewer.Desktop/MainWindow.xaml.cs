@@ -33,6 +33,69 @@ public partial class MainWindow : Window
         // Set up playback timer and hand to ViewModel
         var timer = new DispatcherTimer();
         ViewModel.SetPlaybackTimer(timer);
+
+        RestoreWindowPosition();
+    }
+
+    /// <summary>Saves window position when closing.</summary>
+    protected override void OnClosing(
+        System.ComponentModel.CancelEventArgs e)
+    {
+        SaveWindowPosition();
+        base.OnClosing(e);
+    }
+
+    private void RestoreWindowPosition()
+    {
+        var settings = ViewModel.GetAppSettings();
+        if (settings.WindowWidth.HasValue
+            && settings.WindowHeight.HasValue
+            && settings.WindowWidth > 0
+            && settings.WindowHeight > 0)
+        {
+            Left = settings.WindowLeft ?? 0;
+            Top = settings.WindowTop ?? 0;
+            Width = settings.WindowWidth.Value;
+            Height = settings.WindowHeight.Value;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+
+            if (Enum.TryParse<WindowState>(
+                settings.WindowState, out var state))
+            {
+                WindowState = state;
+            }
+
+            // Ensure window is at least partially on-screen
+            EnsureOnScreen();
+        }
+    }
+
+    private void EnsureOnScreen()
+    {
+        var screen = SystemParameters.WorkArea;
+        if (Left + Width < 50) Left = 0;
+        if (Top + Height < 50) Top = 0;
+        if (Left > screen.Width - 50) Left = screen.Width - Width;
+        if (Top > screen.Height - 50) Top = screen.Height - Height;
+    }
+
+    private void SaveWindowPosition()
+    {
+        if (WindowState == WindowState.Minimized) return;
+        var state = WindowState;
+        // Save normal bounds even when maximized
+        if (state == WindowState.Maximized)
+        {
+            ViewModel.SaveWindowPosition(
+                RestoreBounds.Left, RestoreBounds.Top,
+                RestoreBounds.Width, RestoreBounds.Height,
+                state.ToString());
+        }
+        else
+        {
+            ViewModel.SaveWindowPosition(
+                Left, Top, Width, Height, state.ToString());
+        }
     }
 
     protected override async void OnContentRendered(EventArgs e)
