@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DicomViewer.Core.Models;
 
-namespace DicomViewer.Web.ViewModels;
+namespace DicomViewer.Desktop.ViewModels;
 
 /// <summary>
 /// ViewModel for the settings dialog.

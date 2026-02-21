@@ -1,7 +1,7 @@
 using System.Windows;
-using DicomViewer.Web.ViewModels;
+using DicomViewer.Desktop.ViewModels;
 
-namespace DicomViewer.Web;
+namespace DicomViewer.Desktop;
 
 /// <summary>
 /// Settings dialog. DataContext is SettingsViewModel (set by caller).

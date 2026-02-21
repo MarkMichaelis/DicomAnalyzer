@@ -5,9 +5,9 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Microsoft.Win32;
-using DicomViewer.Web.ViewModels;
+using DicomViewer.Desktop.ViewModels;
 
-namespace DicomViewer.Web;
+namespace DicomViewer.Desktop;
 
 /// <summary>
 /// Minimal code-behind for MainWindow.

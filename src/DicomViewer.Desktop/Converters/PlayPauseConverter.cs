@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace DicomViewer.Web.Converters;
+namespace DicomViewer.Desktop.Converters;
 
 /// <summary>
 /// Converts IsPlaying bool to "Pause"/"Play" string.
