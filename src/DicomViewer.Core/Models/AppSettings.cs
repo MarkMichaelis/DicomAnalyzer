@@ -7,22 +7,4 @@ public class AppSettings
 {
     /// <summary>Last directory that was loaded.</summary>
     public string? LastLoadedDirectory { get; set; }
-
-    /// <summary>Window left position.</summary>
-    public double? WindowLeft { get; set; }
-
-    /// <summary>Window top position.</summary>
-    public double? WindowTop { get; set; }
-
-    /// <summary>Window width.</summary>
-    public double? WindowWidth { get; set; }
-
-    /// <summary>Window height.</summary>
-    public double? WindowHeight { get; set; }
-
-    /// <summary>Window state (Normal, Maximized, Minimized).</summary>
-    public string? WindowState { get; set; }
-
-    /// <summary>Last selected tree node path for restore on reload.</summary>
-    public string? LastSelectedNodePath { get; set; }
 }

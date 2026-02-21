@@ -11,7 +11,6 @@ public static class RoiStatisticsService
 {
     /// <summary>
     /// Computes mean pixel intensity within the ROI across all frames.
-    /// Supports rectangle, ellipse, and freeform ROI shapes.
     /// </summary>
     public static double ComputeMeanIntensity(
         string filePath, RoiData roi)
@@ -25,32 +24,14 @@ public static class RoiStatisticsService
 
         if (width == 0 || height == 0) return 0;
 
-        // Compute bounding box for scan area
-        int scanX, scanY, scanW, scanH;
-        if (roi.Shape == RoiShape.Freeform && roi.Points.Count >= 3)
-        {
-            var minX = roi.Points.Min(p => p[0]);
-            var minY = roi.Points.Min(p => p[1]);
-            var maxX = roi.Points.Max(p => p[0]);
-            var maxY = roi.Points.Max(p => p[1]);
-            scanX = (int)Math.Max(0, Math.Floor(minX));
-            scanY = (int)Math.Max(0, Math.Floor(minY));
-            scanW = (int)Math.Min(width - scanX,
-                Math.Ceiling(maxX) - scanX);
-            scanH = (int)Math.Min(height - scanY,
-                Math.Ceiling(maxY) - scanY);
-        }
-        else
-        {
-            scanX = (int)Math.Max(0, Math.Round(roi.X));
-            scanY = (int)Math.Max(0, Math.Round(roi.Y));
-            scanW = (int)Math.Min(
-                width - scanX, Math.Round(roi.Width));
-            scanH = (int)Math.Min(
-                height - scanY, Math.Round(roi.Height));
-        }
+        var roiX = (int)Math.Max(0, Math.Round(roi.X));
+        var roiY = (int)Math.Max(0, Math.Round(roi.Y));
+        var roiW = (int)Math.Min(
+            width - roiX, Math.Round(roi.Width));
+        var roiH = (int)Math.Min(
+            height - roiY, Math.Round(roi.Height));
 
-        if (scanW <= 0 || scanH <= 0) return 0;
+        if (roiW <= 0 || roiH <= 0) return 0;
 
         double totalSum = 0;
         long totalPixels = 0;
@@ -62,11 +43,10 @@ public static class RoiStatisticsService
                 var image = new DicomImage(ds);
                 var rendered = image.RenderImage(frame);
 
-                for (int y = scanY; y < scanY + scanH && y < height; y++)
+                for (int y = roiY; y < roiY + roiH && y < height; y++)
                 {
-                    for (int x = scanX; x < scanX + scanW && x < width; x++)
+                    for (int x = roiX; x < roiX + roiW && x < width; x++)
                     {
-                        if (!roi.ContainsPoint(x, y)) continue;
                         var pixel = rendered.GetPixel(x, y);
                         var intensity = 0.299 * pixel.R
                             + 0.587 * pixel.G
