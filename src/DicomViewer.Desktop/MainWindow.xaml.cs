@@ -180,6 +180,21 @@ public partial class MainWindow : Window
         ViewModel.OnFrameChanged((int)e.NewValue);
     }
 
+    private void CopySelectedTags_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = TagListBox.SelectedItems
+            .Cast<string>().ToList();
+        if (selected.Count > 0)
+            Clipboard.SetText(string.Join(Environment.NewLine, selected));
+    }
+
+    private void CopyAllTags_Click(object sender, RoutedEventArgs e)
+    {
+        var all = ViewModel.DicomTags.ToList();
+        if (all.Count > 0)
+            Clipboard.SetText(string.Join(Environment.NewLine, all));
+    }
+
     #endregion
 
     #region Canvas ROI Drawing
