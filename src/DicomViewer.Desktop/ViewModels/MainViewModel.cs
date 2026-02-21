@@ -241,6 +241,24 @@ public partial class MainViewModel : ObservableObject
         StatusText = "ROI cleared.";
     }
 
+    /// <summary>Undo the last ROI change for the current group (Ctrl+Z).</summary>
+    [RelayCommand]
+    private void UndoRoi()
+    {
+        if (SelectedGroup == null) return;
+        if (_roiService.UndoRoi(SelectedGroup.GroupId))
+        {
+            _roiService.SaveRois(_currentDirectory);
+            UpdateRoiDisplay();
+            ComputeRoiMean();
+            StatusText = "ROI undone.";
+        }
+        else
+        {
+            StatusText = "Nothing to undo.";
+        }
+    }
+
     /// <summary>Applies the filter to the tree.</summary>
     [RelayCommand]
     private void ApplyFilter() => BuildTree();

@@ -7,6 +7,10 @@
     <Window.DataContext>
         <vm:MainViewModel/>
     </Window.DataContext>
+    <Window.InputBindings>
+        <KeyBinding Key="Z" Modifiers="Ctrl"
+                    Command="{Binding UndoRoiCommand}"/>
+    </Window.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
