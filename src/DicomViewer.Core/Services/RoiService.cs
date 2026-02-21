@@ -10,21 +10,53 @@ public class RoiService
 {
     private const string RoiFileName = "dicom_viewer.roi";
     private Dictionary<string, RoiData> _rois = [];
+    private readonly Dictionary<string, Stack<RoiData?>> _undoStacks = [];
 
     /// <summary>Gets the ROI for a specific group.</summary>
     public RoiData? GetRoi(string groupId) =>
         _rois.GetValueOrDefault(groupId);
 
-    /// <summary>Sets or replaces the ROI for a group.</summary>
+    /// <summary>Sets or replaces the ROI for a group, pushing the old value onto the undo stack.</summary>
     public void SetRoi(string groupId, RoiData roi)
     {
         roi.GroupId = groupId;
+        PushUndo(groupId);
         _rois[groupId] = roi;
     }
 
-    /// <summary>Clears the ROI for a group.</summary>
-    public void ClearRoi(string groupId) =>
+    /// <summary>Clears the ROI for a group, pushing old value onto undo stack.</summary>
+    public void ClearRoi(string groupId)
+    {
+        PushUndo(groupId);
         _rois.Remove(groupId);
+    }
+
+    /// <summary>Undoes the last ROI change for a group. Returns true if undo was performed.</summary>
+    public bool UndoRoi(string groupId)
+    {
+        if (!_undoStacks.TryGetValue(groupId, out var stack)
+            || stack.Count == 0)
+            return false;
+
+        var previous = stack.Pop();
+        if (previous == null)
+            _rois.Remove(groupId);
+        else
+            _rois[groupId] = previous;
+        return true;
+    }
+
+    /// <summary>Returns true if there is an undo available for the group.</summary>
+    public bool CanUndo(string groupId) =>
+        _undoStacks.TryGetValue(groupId, out var stack) && stack.Count > 0;
+
+    private void PushUndo(string groupId)
+    {
+        if (!_undoStacks.ContainsKey(groupId))
+            _undoStacks[groupId] = new Stack<RoiData?>();
+        _undoStacks[groupId].Push(
+            _rois.GetValueOrDefault(groupId));
+    }
 
     /// <summary>Sets mean intensity for a file in a group.</summary>
     public void SetFileMean(
