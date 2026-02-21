@@ -1,6 +1,6 @@
 ---
 name: "Dev Loop"
-description: "Orchestrate the full development cycle: Brainstorm -> Plan -> TDD -> Refactor -> Functional Test -> Code Review (GitHub) -> Fix -> Repeat until all issues resolve. Language-aware."
+description: "Orchestrate the full development cycle: Brainstorm -> Plan -> TDD -> Refactor -> Functional Test -> Code Review (cross-model CLI) -> Fix -> Repeat until all issues resolve. Language-aware."
 tools: ["findTestFiles", "edit/editFiles", "runTests", "runCommands", "codebase", "filesystem", "search", "problems", "testFailure", "terminalLastCommand", "changes", "playwright"]
 ---
 
@@ -39,7 +39,7 @@ You drive the full quality cycle, coordinating all agents in order, and repeatin
 |        |                                                     |
 |   6. Verify Before Completion (evidence, not claims)         |
 |        |                                                     |
-|   7. Code Review (via GitHub Copilot on PR)                  |
+|   7. Code Review (cross-model CLI)                           |
 |        |                                                     |
 |   8. Fix issues from review                                  |
 |        |                                                     |
@@ -204,64 +204,99 @@ BEFORE claiming any status:
 
 **Exit criteria:** All commands run, all pass, smoke test passes, evidence presented.
 
-### Phase 7 -- Code Review (via GitHub)
+### Phase 7 -- Code Review (Cross-Model CLI)
 
-Shell out to GitHub for an independent code review rather than using a local agent. This ensures the review runs on GitHub's infrastructure with a fresh context.
+Invoke a **different LLM** via CLI for an independent code review. The reviewer MUST be from a different model family than the authoring agent to ensure a fresh perspective and catch blind spots.
 
-1. **Push the branch** to the remote:
-   ```bash
-   git push -u origin HEAD
-   ```
-2. **Create or update a pull request:**
-   ```bash
-   # Create PR (first time)
-   gh pr create --title "<feature description>" --body "Automated PR from dev-loop" --draft
-   # Or if PR already exists, just push -- it updates automatically
-   ```
-3. **Request a Copilot code review:**
-   ```bash
-   gh pr edit --add-reviewer copilot
-   ```
-4. **Wait for the review to complete.** Poll until Copilot finishes:
-   ```bash
-   # Check review status -- repeat until a review from copilot appears
-   gh pr reviews --json author,state,body | ConvertFrom-Json
-   ```
-   Keep polling (e.g., every 30 seconds) until a review with `author.login` of `copilot` (or `github-actions`) and a non-empty body appears. **Do not proceed until the review is complete.**
-5. **Read the review findings:**
-   ```bash
-   gh pr view --comments --json comments,reviews
-   ```
-6. **Process all findings** -- parse the review comments and categorize them by severity (Critical / Important / Suggestion) using the same severity definitions as the `@code-review` agent.
+#### Step 1 -- Determine your model family
 
-**Exit criteria:** GitHub code review received and all findings parsed into the structured format.
+| If you are... | Your family is |
+|---|---|
+| Claude (Opus, Sonnet, Haiku -- any version) | `anthropic` |
+| GPT, o-series, Codex (any version) | `openai` |
+| Gemini (any version) | `google` |
+
+#### Step 2 -- Select a reviewer CLI from a different family
+
+| Your Family | 1st Choice | 2nd Choice |
+|---|---|---|
+| `anthropic` | `codex review` (OpenAI) | `copilot -p` with an OpenAI model |
+| `openai` | `claude -p` (Anthropic) | `copilot -p` with a Claude model |
+| `google` | `claude -p` or `codex review` | whichever is available |
+
+Verify availability first:
+```powershell
+Get-Command codex,claude,copilot -ErrorAction SilentlyContinue
+```
+
+#### Step 3 -- Invoke the review
+
+Use the review prompt from the `@code-review` agent (correctness, code quality, test quality with Right-BICEP, security, YAGNI). The reviewer must output structured markdown with severity categories.
+
+**Option A -- `codex review` (preferred when reviewer is OpenAI-family):**
+```powershell
+codex review --base main "Review for correctness, code quality (functions <=20 lines, no duplication, clear naming), test quality (Right-BICEP coverage), security, and YAGNI compliance. Report findings as: ## Code Review Summary with ### Critical, ### Important, ### Suggestions, ### Positive Observations. Each finding must include file path and line number."
+```
+
+**Option B -- `claude -p` (preferred when reviewer is Anthropic-family):**
+```powershell
+$reviewPrompt = @"
+You are an independent code reviewer. Run ``git diff origin/main...HEAD`` to see all changes, then review each changed file for:
+- Correctness: logic errors, missing error handling, edge cases
+- Code quality: functions > 20 lines, duplication, poor naming, YAGNI violations
+- Test quality (Right-BICEP): Right results, Boundary conditions, Inverse checks, Cross-checks, Error conditions, Performance
+- Security: unvalidated input, hardcoded secrets
+
+Output structured markdown:
+## Code Review Summary
+**Files reviewed:** <list>  **Overall assessment:** PASS | NEEDS CHANGES | CRITICAL ISSUES
+### Critical (blocks progress)
+### Important (must fix before proceeding)
+### Suggestions (nice to have)
+### Positive Observations
+Each finding must include file path and line number.
+"@
+claude -p $reviewPrompt --model sonnet --allowedTools "Bash(git:*),Read"
+```
+
+**Option C -- `copilot -p` (fallback -- supports models from either family):**
+```powershell
+# Use a model from a different family than the author
+copilot -p $reviewPrompt --model claude-sonnet-4.6 -s --allow-all-tools
+```
+
+#### Step 4 -- Capture and parse the output
+
+Categorize findings by severity using the same definitions as the `@code-review` agent:
+- **Critical** -- blocks progress, must fix immediately
+- **Important** -- must fix before proceeding to next task
+- **Suggestions** -- apply if low-effort and high-value
+
+#### Fallback
+
+If no cross-model CLI is available on the system, fall back to the `@code-review` VS Code chat agent but **log a warning** that the review is same-context rather than independent.
+
+**Exit criteria:** Cross-model code review received and all findings parsed into the structured format.
 
 ### Phase 8 -- Fix Review Issues
 
-After the GitHub code review completes, address **every finding** identified by the reviewer:
+After the cross-model code review completes, address **every finding** identified by the reviewer:
 
 1. Address **Critical** issues immediately -- these are blockers.
 2. Address **Important** issues -- these improve quality significantly.
 3. Apply **Suggestions** when they are low-effort and high-value.
 4. Run the full test suite after each fix.
 5. If a fix requires new behavior, loop back to Phase 3 (write a test first).
-6. After all fixes are applied, push the updated branch:
-   ```bash
-   git push
-   ```
+6. After all fixes are applied, commit.
 
-**Exit criteria:** All Critical and Important issues resolved, tests green, lint/compile passes without errors, branch pushed.
+**Exit criteria:** All Critical and Important issues resolved, tests green, lint/compile passes without errors.
 
 ### Phase 9 -- Re-Review
 
-After fixes are applied and pushed, request another GitHub code review:
+After fixes are applied and committed, run another cross-model code review:
 
-1. **Re-request Copilot review:**
-   ```bash
-   gh pr edit --add-reviewer copilot
-   ```
-2. **Wait for the review to complete** (same polling process as Phase 7).
-3. **Read and process findings.**
+1. **Re-invoke the same reviewer CLI** used in Phase 7 (same tool, same model family rules).
+2. **Read and process findings** using the same structured format.
 
 - If the review comes back **PASS** (no Critical or Important findings) -> the loop is complete.
 - If **NEEDS CHANGES** -> loop back to Phase 4 (Refactor) and continue.
@@ -360,7 +395,7 @@ NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
    - After REFACTOR: `refactor(scope): <description>`
    - After FUNCTIONAL TEST: `test(integration): add <feature> functional test` or `test(e2e): add <feature> functional test`
    - After REVIEW FIX: `fix(scope): address review feedback -- <summary>`
-6. **Never skip the review** -- every change must be reviewed via GitHub Copilot on the PR.
+6. **Never skip the review** -- every change must be reviewed via cross-model CLI. The reviewer must be a different model family than the author.
 7. **Never write to `main`** -- all commits go to the feature branch. Suggest a PR to merge when the loop completes.
 8. **Verify before claiming** -- run commands, read output, present evidence. No "should work" claims.
 9. **Surface blockers early** -- if a review finding is ambiguous or requires a design decision, ask the user before proceeding.

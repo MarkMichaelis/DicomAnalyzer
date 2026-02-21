@@ -154,9 +154,9 @@ Dedicated agent prompts live in `.github/agents/` using the `.agent.md` format:
 | `tdd.agent.md` | Red → Green → Refactor cycle with Iron Law enforcement (no code without failing test) |
 | `functional-testing.agent.md` | Generate & maintain functional / E2E tests with verification-before-completion |
 | `refactor.agent.md` | Identify and remove duplication after each green step — YAGNI, simplicity first |
-| `code-review.agent.md` | Independent code review via GitHub Copilot PR review with severity-based findings |
+| `code-review.agent.md` | Independent code review prompt & checklist — invoked via cross-model CLI (codex, claude, copilot) for severity-based findings |
 | `systematic-debugging.agent.md` | 4-phase root cause investigation — no fixes without understanding the problem first |
-| `dev-loop.agent.md` | Orchestrator: Brainstorm → Plan → TDD → Refactor → Functional Test → Verify → Review → Fix → Repeat |
+| `dev-loop.agent.md` | Orchestrator: Brainstorm → Plan → TDD → Refactor → Functional Test → Verify → Cross-Model Review → Fix → Repeat |
 
 ### Development Workflow
 
@@ -164,7 +164,7 @@ Use `@dev-loop` to drive the full quality cycle for any feature. It coordinates
 all other agents in order and repeats until the code review passes cleanly.
 
 ```
-Brainstorm → Plan → TDD (Red→Green) → Refactor → Functional Test → Verify → Code Review (GitHub Copilot on PR) → Fix → Re-Review
+Brainstorm → Plan → TDD (Red→Green) → Refactor → Functional Test → Verify → Code Review (cross-model CLI) → Fix → Re-Review
 ```
 
 Use `@brainstorming` when exploring a new idea before committing to implementation.
