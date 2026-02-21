@@ -15,36 +15,79 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Top Bar -->
-        <Grid Grid.Row="0" Margin="5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0" Margin="0,0,5,0"
-                     Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
-                     VerticalContentAlignment="Center"
-                     KeyDown="FolderPathTextBox_KeyDown"/>
-            <Button Grid.Column="1" Content="Browse" Padding="10,2" Margin="0,0,5,0"
-                    Click="BrowseButton_Click"/>
-            <Button Grid.Column="2" Content="Reload" Padding="10,2" Margin="0,0,5,0"
-                    Command="{Binding ReloadCommand}"/>
-            <Button Grid.Column="3" Content="Export Excel" Padding="10,2" Margin="0,0,5,0"
-                    Click="ExportExcelButton_Click"
-                    IsEnabled="{Binding HasFiles}"/>
-            <Button Grid.Column="4" Content="Settings" Padding="10,2"
-                    Click="SettingsButton_Click"/>
-        </Grid>
+        <!-- Toolbar -->
+        <ToolBarTray Grid.Row="0">
+            <!-- File Operations -->
+            <ToolBar Header="File">
+                <TextBlock Text="Folder:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
+                         Width="300" Margin="0,0,5,0"
+                         KeyDown="FolderPathTextBox_KeyDown"/>
+                <Button Click="BrowseButton_Click" ToolTip="Browse for DICOM folder"
+                        Content="&#x1F4C2; Browse" Padding="6,2"/>
+                <Button Command="{Binding ReloadCommand}" ToolTip="Reload current folder"
+                        Content="&#x1F504; Reload" Padding="6,2"/>
+                <Separator/>
+                <Button Click="ExportExcelButton_Click" ToolTip="Export ROI data to Excel"
+                        Content="&#x1F4CA; Export" Padding="6,2"
+                        IsEnabled="{Binding HasFiles}"/>
+                <Button Click="SettingsButton_Click" ToolTip="Open folder settings"
+                        Content="&#x2699; Settings" Padding="6,2"/>
+            </ToolBar>
+
+            <!-- Playback Controls -->
+            <ToolBar Header="Playback">
+                <Button Command="{Binding PreviousFileCommand}" ToolTip="Previous file"
+                        Content="&#x23EE; Prev" Padding="6,2"/>
+                <Button Command="{Binding TogglePlaybackCommand}" ToolTip="Play/Pause playback"
+                        Content="{Binding IsPlaying, Converter={StaticResource PlayPauseConverter}}"
+                        Padding="6,2"/>
+                <Button Command="{Binding NextFileCommand}" ToolTip="Next file"
+                        Content="Next &#x23ED;" Padding="6,2"/>
+                <Separator/>
+                <TextBlock Text="FPS:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <Slider Width="100" Minimum="1" Maximum="30"
+                        Value="{Binding Fps}"
+                        VerticalAlignment="Center"
+                        IsSnapToTickEnabled="True" TickFrequency="1"
+                        IsEnabled="{Binding HasFiles}"/>
+                <TextBlock Text="{Binding Fps}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+            </ToolBar>
+
+            <!-- ROI Tools -->
+            <ToolBar Header="ROI">
+                <TextBlock Text="Shape:" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                <ComboBox x:Name="RoiShapeCombo" SelectedIndex="0"
+                          SelectionChanged="RoiShapeCombo_SelectionChanged" Width="100"
+                          ToolTip="Select ROI drawing shape"
+                          IsEnabled="{Binding HasFiles}">
+                    <ComboBoxItem Content="Rectangle"/>
+                    <ComboBoxItem Content="Ellipse"/>
+                    <ComboBoxItem Content="Freeform"/>
+                </ComboBox>
+                <Button Command="{Binding ClearRoiCommand}" ToolTip="Clear ROI for current group"
+                        Content="&#x2716; Clear" Padding="6,2"/>
+                <Button Command="{Binding UndoRoiCommand}" ToolTip="Undo last ROI change"
+                        Content="&#x21A9; Undo" Padding="6,2"/>
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- Info bar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5,2">
+            <TextBlock Text="{Binding FileInfoText}" VerticalAlignment="Center"
+                       FontWeight="SemiBold" Margin="0,0,10,0"/>
+            <TextBlock Text="{Binding RoiMeanText}" VerticalAlignment="Center"
+                       FontWeight="SemiBold"/>
+        </StackPanel>
 
         <!-- Main Content -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250"/>
                 <ColumnDefinition Width="5"/>
@@ -79,135 +122,64 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
 
-            <!-- Right Panel -->
+            <!-- Right Panel: Image + Tags -->
             <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- Controls Row -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-                    <Button Content="{Binding IsPlaying, Converter={StaticResource PlayPauseConverter}}"
-                            Padding="10,2" Margin="0,0,5,0"
-                            Command="{Binding TogglePlaybackCommand}"
-                            IsEnabled="{Binding HasFiles}"/>
-                    <Button Content="Previous" Padding="10,2" Margin="0,0,5,0"
-                            Command="{Binding PreviousFileCommand}"
-                            IsEnabled="{Binding HasFiles}"/>
-                    <Button Content="Next" Padding="10,2" Margin="0,0,5,0"
-                            Command="{Binding NextFileCommand}"
-                            IsEnabled="{Binding HasFiles}"/>
-                    <Button Content="Clear ROI" Padding="10,2" Margin="0,0,5,0"
-                            Command="{Binding ClearRoiCommand}"
-                            IsEnabled="{Binding HasFiles}"/>
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="5,2"/>
-                    <TextBlock Text="ROI:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <ComboBox x:Name="RoiShapeCombo" Width="100"
-                              SelectedIndex="0" SelectionChanged="RoiShapeCombo_SelectionChanged"
-                              IsEnabled="{Binding HasFiles}">
-                        <ComboBoxItem Content="Rectangle"/>
-                        <ComboBoxItem Content="Ellipse"/>
-                        <ComboBoxItem Content="Freeform"/>
-                    </ComboBox>
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="5,2"/>
-                    <TextBlock Text="FPS:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <Slider Width="100" Minimum="1" Maximum="30"
-                            Value="{Binding Fps}"
-                            VerticalAlignment="Center"
-                            IsSnapToTickEnabled="True" TickFrequency="1"
-                            IsEnabled="{Binding HasFiles}"/>
-                    <TextBlock Text="{Binding Fps}" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                </StackPanel>
+                <!-- Image Viewer -->
+                <Border Grid.Column="0" Margin="5" BorderBrush="Gray"
+                        BorderThickness="1" Background="Black">
+                    <Canvas x:Name="ImageCanvas" ClipToBounds="True"
+                            MouseLeftButtonDown="ImageCanvas_MouseLeftButtonDown"
+                            MouseMove="ImageCanvas_MouseMove"
+                            MouseLeftButtonUp="ImageCanvas_MouseLeftButtonUp"
+                            SizeChanged="ImageCanvas_SizeChanged">
+                        <Image x:Name="DicomImageControl"
+                               Source="{Binding CurrentImage}"
+                               Stretch="Uniform"/>
+                    </Canvas>
+                </Border>
 
-                <!-- File Info -->
-                <TextBlock Grid.Row="1" Margin="5,2" FontWeight="SemiBold"
-                           Text="{Binding FileInfoText}"/>
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
 
-                <!-- Image + Tags Split -->
-                <Grid Grid.Row="2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="5"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Image Viewer -->
-                    <Border Grid.Column="0" Margin="5" BorderBrush="Gray"
-                            BorderThickness="1" Background="Black">
-                        <Canvas x:Name="ImageCanvas" ClipToBounds="True"
-                                MouseLeftButtonDown="ImageCanvas_MouseLeftButtonDown"
-                                MouseMove="ImageCanvas_MouseMove"
-                                MouseLeftButtonUp="ImageCanvas_MouseLeftButtonUp"
-                                SizeChanged="ImageCanvas_SizeChanged">
-                            <Image x:Name="DicomImageControl"
-                                   Source="{Binding CurrentImage}"
-                                   Stretch="Uniform"/>
-                        </Canvas>
-                    </Border>
-
-                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
-
-                    <!-- Tag Panel -->
-                    <Border Grid.Column="2" Margin="5" BorderBrush="Gray" BorderThickness="1">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="DICOM Tags" FontWeight="Bold" Margin="5"/>
-                            <TextBox x:Name="TagSearchBox" Grid.Row="1"
-                                     TextChanged="TagSearchBox_TextChanged"
-                                     Margin="5,2"/>
-                            <ListBox x:Name="TagListBox" Grid.Row="2"
-                                     ItemsSource="{Binding DicomTags}"
-                                     FontFamily="Consolas" FontSize="11"
-                                     SelectionMode="Extended"
-                                     PreviewMouseRightButtonDown="TagListBox_PreviewMouseRightButtonDown">
-                                <ListBox.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Copy Selected Tag(s)"
-                                                  Click="CopySelectedTags_Click"
-                                                  InputGestureText="Ctrl+C"/>
-                                        <MenuItem Header="Copy All Tags"
-                                                  Click="CopyAllTags_Click"/>
-                                    </ContextMenu>
-                                </ListBox.ContextMenu>
-                            </ListBox>
-                        </Grid>
-                    </Border>
-                </Grid>
-
-                <!-- ROI Mean + Status -->
-                <Grid Grid.Row="3" Margin="5">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{Binding RoiMeanText}"
-                               FontWeight="SemiBold" Margin="0,0,20,0"/>
-                    <TextBlock Grid.Column="1" Text="{Binding StatusText}"
-                               Foreground="Gray"
-                               x:Name="StatusBarText"
-                               MouseRightButtonUp="StatusBar_MouseRightButtonUp">
-                        <TextBlock.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Copy Status Text" Click="CopyStatusText_Click"
-                                          InputGestureText="Ctrl+C" />
-                            </ContextMenu>
-                        </TextBlock.ContextMenu>
-                    </TextBlock>
-                </Grid>
+                <!-- Tag Panel -->
+                <Border Grid.Column="2" Margin="5" BorderBrush="Gray" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="DICOM Tags" FontWeight="Bold" Margin="5"/>
+                        <TextBox x:Name="TagSearchBox" Grid.Row="1"
+                                 TextChanged="TagSearchBox_TextChanged"
+                                 Margin="5,2"/>
+                        <ListBox x:Name="TagListBox" Grid.Row="2"
+                                 ItemsSource="{Binding DicomTags}"
+                                 FontFamily="Consolas" FontSize="11"
+                                 SelectionMode="Extended"
+                                 PreviewMouseRightButtonDown="TagListBox_PreviewMouseRightButtonDown">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy Selected Tag(s)"
+                                              Click="CopySelectedTags_Click"
+                                              InputGestureText="Ctrl+C"/>
+                                    <MenuItem Header="Copy All Tags"
+                                              Click="CopyAllTags_Click"/>
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                        </ListBox>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
 
         <!-- Frame Slider -->
-        <Grid Grid.Row="2" Margin="5">
+        <Grid Grid.Row="3" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -224,5 +196,21 @@
             <TextBlock Grid.Column="2" Text="{Binding FrameText}"
                        VerticalAlignment="Center" Margin="5,0,0,0"/>
         </Grid>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusText}" Foreground="Gray"
+                           x:Name="StatusBarText"
+                           MouseRightButtonUp="StatusBar_MouseRightButtonUp">
+                    <TextBlock.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Copy Status Text" Click="CopyStatusText_Click"
+                                      InputGestureText="Ctrl+C" />
+                        </ContextMenu>
+                    </TextBlock.ContextMenu>
+                </TextBlock>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>
