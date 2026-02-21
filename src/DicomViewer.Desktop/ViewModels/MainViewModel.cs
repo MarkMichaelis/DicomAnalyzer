@@ -26,6 +26,7 @@ public partial class MainViewModel : ObservableObject
 
     private List<DicomFileEntry> _allFiles = [];
     private List<TimeSeriesGroup> _allGroups = [];
+    private Dictionary<string, List<string>> _fileTagCache = [];
     private string _currentDirectory = string.Empty;
     private AppSettings _appSettings = new();
     private System.Windows.Threading.DispatcherTimer? _playbackTimer;
@@ -165,6 +166,14 @@ public partial class MainViewModel : ObservableObject
             _roiService.LoadRois(dir);
             _appSettings.LastLoadedDirectory = dir;
             _settingsService.SaveAppSettings(_appSettings);
+
+            // Cache tags per file for filter search
+            _fileTagCache = [];
+            foreach (var file in _allFiles)
+            {
+                _fileTagCache[file.FilePath] =
+                    _tagService.GetTags(file.FilePath);
+            }
 
             BuildTree();
             HasFiles = _allFiles.Count > 0;
@@ -490,8 +499,7 @@ public partial class MainViewModel : ObservableObject
                     : file.FileName;
 
                 if (!string.IsNullOrEmpty(FilterText)
-                    && !display.Contains(FilterText,
-                        StringComparison.OrdinalIgnoreCase))
+                    && !MatchesFilter(file, display, FilterText))
                     continue;
 
                 vm.Children.Add(new TreeFileViewModel(file, display));
@@ -500,6 +508,25 @@ public partial class MainViewModel : ObservableObject
             if (vm.Children.Count > 0 || string.IsNullOrEmpty(FilterText))
                 TreeGroups.Add(vm);
         }
+    }
+
+    /// <summary>
+    /// Checks if a file matches the filter text against display name,
+    /// DICOM tag names, and DICOM tag values.
+    /// </summary>
+    private bool MatchesFilter(
+        DicomFileEntry file, string display, string filter)
+    {
+        if (display.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (_fileTagCache.TryGetValue(file.FilePath, out var tags))
+        {
+            return tags.Any(t => t.Contains(
+                filter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
     }
 
     partial void OnFilterTextChanged(string value) => BuildTree();
