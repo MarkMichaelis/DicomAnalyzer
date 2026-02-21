@@ -227,3 +227,36 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# .NET / WPF
+bin/
+obj/
+TestResults/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio profiler / diagnostics
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Rider / ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# Publish output
+publish/
+
+# Local tooling
+artifacts/
