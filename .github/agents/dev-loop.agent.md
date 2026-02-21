@@ -181,8 +181,14 @@ Follow the `@functional-testing` agent workflow (skip if the change is purely in
 
 1. **Run full test suite** -- use the language-appropriate command (see below).
 2. **Read the output** -- check exit codes, count failures, verify no warnings.
-3. **Line-by-line plan checklist** -- verify each task from the plan is implemented.
-4. **Only then** claim the work is ready for review.
+3. **Application startup smoke test** -- if the project produces a runnable application (desktop, web server, CLI), launch it and verify it does not crash on startup:
+   - Start the application process, redirecting both stdout and stderr to temporary files.
+   - Wait a few seconds for initialization.
+   - If the process has exited, **read and display the full exception/error output** so the agent can diagnose and fix the failure.
+   - If the process is still running, the smoke test passes -- stop the process.
+   - **This step is mandatory for any project with a UI or server entry point.** Do not skip it.
+4. **Line-by-line plan checklist** -- verify each task from the plan is implemented.
+5. **Only then** claim the work is ready for review.
 
 **NEVER use "should pass", "probably works", or "seems correct".** Run the verification, read the output, state facts with evidence.
 
@@ -192,10 +198,11 @@ BEFORE claiming any status:
 2. RUN: Execute the FULL command (fresh, complete)
 3. READ: Full output, check exit code, count failures
 4. VERIFY: Does output confirm the claim?
-5. ONLY THEN: Make the claim
+5. SMOKE TEST: Launch the application, capture stdout/stderr, confirm no crash
+6. ONLY THEN: Make the claim
 ```
 
-**Exit criteria:** All commands run, all pass, evidence presented.
+**Exit criteria:** All commands run, all pass, smoke test passes, evidence presented.
 
 ### Phase 7 -- Code Review (via GitHub)
 
@@ -290,11 +297,39 @@ npx vitest run
 npx playwright test
 ```
 
+### C# / .NET
+
+```powershell
+# Build
+dotnet build <solution-or-project> 2>&1
+
+# Run all tests
+dotnet test <solution-or-project> --verbosity normal 2>&1
+
+# Application startup smoke test (WPF / console / web)
+$proc = Start-Process dotnet `
+    -ArgumentList 'run','--project','<path-to-startup-csproj>' `
+    -PassThru -RedirectStandardOutput stdout.txt -RedirectStandardError stderr.txt
+Start-Sleep -Seconds 8
+if ($proc.HasExited) {
+    Write-Host '=== STDOUT ===' -ForegroundColor Red
+    Get-Content stdout.txt
+    Write-Host '=== STDERR ===' -ForegroundColor Red
+    Get-Content stderr.txt
+    throw "Application crashed on startup with exit code $($proc.ExitCode)"
+} else {
+    Write-Host 'Smoke test PASSED -- application started successfully.' -ForegroundColor Green
+    Stop-Process $proc -Force
+}
+Remove-Item stdout.txt, stderr.txt -ErrorAction SilentlyContinue
+```
+
 ### Generic (Any Language)
 
 1. Run the project's lint/compile tool.
 2. Run the project's test suite.
 3. Verify exit code is 0 and output shows all tests passing.
+4. If the project produces a runnable application, perform a startup smoke test (launch, wait, check for crash, capture and display stdout/stderr on failure).
 
 ---
 
