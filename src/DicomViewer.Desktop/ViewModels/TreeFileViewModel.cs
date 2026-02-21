@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using DicomViewer.Core.Models;
 
-namespace DicomViewer.Web.ViewModels;
+namespace DicomViewer.Desktop.ViewModels;
 
 /// <summary>
 /// ViewModel for a file node in the tree.

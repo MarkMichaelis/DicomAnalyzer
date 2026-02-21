@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DicomViewer.Core.Models;
 
-namespace DicomViewer.Web.ViewModels;
+namespace DicomViewer.Desktop.ViewModels;
 
 /// <summary>
 /// ViewModel for a time-series group node in the tree.

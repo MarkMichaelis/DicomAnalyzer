@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/DicomViewer.Core/DicomViewer.Core.csproj" />
-    <Project Path="src/DicomViewer.Web/DicomViewer.Web.csproj" />
+    <Project Path="src/DicomViewer.Desktop/DicomViewer.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DicomViewer.Tests/DicomViewer.Tests.csproj" />
