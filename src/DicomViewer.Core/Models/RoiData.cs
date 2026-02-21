@@ -18,6 +18,9 @@ public enum RoiShape
 /// </summary>
 public class RoiData
 {
+    /// <summary>Unique ID for this ROI.</summary>
+    public string Id { get; set; } = string.Empty;
+
     /// <summary>Group this ROI belongs to.</summary>
     public string GroupId { get; set; } = string.Empty;
 
