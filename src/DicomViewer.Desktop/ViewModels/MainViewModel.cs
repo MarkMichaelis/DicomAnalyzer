@@ -91,6 +91,21 @@ public partial class MainViewModel : ObservableObject
         _appSettings = _settingsService.LoadAppSettings();
     }
 
+    /// <summary>Gets the current app settings for window position restoration.</summary>
+    public AppSettings GetAppSettings() => _appSettings;
+
+    /// <summary>Saves window position to app settings.</summary>
+    public void SaveWindowPosition(
+        double left, double top, double width, double height, string state)
+    {
+        _appSettings.WindowLeft = left;
+        _appSettings.WindowTop = top;
+        _appSettings.WindowWidth = width;
+        _appSettings.WindowHeight = height;
+        _appSettings.WindowState = state;
+        _settingsService.SaveAppSettings(_appSettings);
+    }
+
     /// <summary>
     /// Initializes the ViewModel and auto-loads directory if applicable.
     /// </summary>
