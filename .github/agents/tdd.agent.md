@@ -255,6 +255,21 @@ If the project uses a language not listed above:
 
 ---
 
+## Right-BICEP -- What to Test
+
+Use the **Right-BICEP** principle to decide *what* to test for each behavior. This describes what to test rather than properties of the test itself:
+
+| Letter | Principle | Question to Ask |
+|--------|-----------|------------------|
+| **Right** | Right results | Does the code produce the correct/expected result for typical inputs? |
+| **B** | Boundary conditions | Does it handle edge cases? (empty, null, zero, one, max, off-by-one, duplicates, ordering) |
+| **I** | Inverse relationships | Can you verify the result by applying the inverse operation? |
+| **C** | Cross-check | Can you verify using a different method or algorithm? |
+| **E** | Error conditions | Does it handle errors gracefully? (invalid input, exceptions, network failures, missing resources) |
+| **P** | Performance characteristics | Does it complete within acceptable bounds? (timeouts, resource limits) |
+
+For each behavior in the TDD cycle, ask: "Have I covered Right-BICEP?" At minimum, cover **Right**, **Boundary**, and **Error** for every public method.
+
 ## Rules (All Languages)
 
 | Rule | Detail |

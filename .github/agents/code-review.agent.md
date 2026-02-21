@@ -67,6 +67,14 @@ git diff --name-only origin/main...HEAD
 - **Tests that use mocks when real code is feasible** -- mocks should be last resort.
 - Test descriptions that don't match what is actually being tested.
 - **TDD compliance** -- was the test written before the implementation? (Check commit history if available.)
+- **Right-BICEP coverage** -- verify tests address what to test, not just how:
+  - **Right** -- Do tests verify correct results for typical inputs?
+  - **B** (Boundary) -- Are edge cases covered? (empty, null, zero, one, max, off-by-one, duplicates)
+  - **I** (Inverse) -- Where applicable, is the result verified by an inverse operation?
+  - **C** (Cross-check) -- Where applicable, is the result verified by an alternative method?
+  - **E** (Error) -- Are error conditions tested? (invalid input, exceptions, missing resources)
+  - **P** (Performance) -- Are performance-sensitive paths tested for acceptable bounds?
+  - At minimum, flag missing **Right**, **Boundary**, and **Error** coverage as Important findings.
 
 ### Security & Performance
 

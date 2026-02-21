@@ -1,6 +1,6 @@
 ---
 name: "Dev Loop"
-description: "Orchestrate the full development cycle: Brainstorm -> Plan -> TDD -> Refactor -> Functional Test -> Code Review -> Fix -> Repeat until all issues resolve. Language-aware."
+description: "Orchestrate the full development cycle: Brainstorm -> Plan -> TDD -> Refactor -> Functional Test -> Code Review (GitHub) -> Fix -> Repeat until all issues resolve. Language-aware."
 tools: ["findTestFiles", "edit/editFiles", "runTests", "runCommands", "codebase", "filesystem", "search", "problems", "testFailure", "terminalLastCommand", "changes", "playwright"]
 ---
 
@@ -39,7 +39,7 @@ You drive the full quality cycle, coordinating all agents in order, and repeatin
 |        |                                                     |
 |   6. Verify Before Completion (evidence, not claims)         |
 |        |                                                     |
-|   7. Code Review (different LLM via @code-review)            |
+|   7. Code Review (via GitHub Copilot on PR)                  |
 |        |                                                     |
 |   8. Fix issues from review                                  |
 |        |                                                     |
@@ -197,33 +197,66 @@ BEFORE claiming any status:
 
 **Exit criteria:** All commands run, all pass, evidence presented.
 
-### Phase 7 -- Code Review
+### Phase 7 -- Code Review (via GitHub)
 
-Invoke the `@code-review` agent (runs on a different model -- `o4-mini`):
+Shell out to GitHub for an independent code review rather than using a local agent. This ensures the review runs on GitHub's infrastructure with a fresh context.
 
-1. The review agent examines all changed files.
-2. It produces a structured report with categorized findings.
-3. Findings are handed back to you for fixing.
+1. **Push the branch** to the remote:
+   ```bash
+   git push -u origin HEAD
+   ```
+2. **Create or update a pull request:**
+   ```bash
+   # Create PR (first time)
+   gh pr create --title "<feature description>" --body "Automated PR from dev-loop" --draft
+   # Or if PR already exists, just push -- it updates automatically
+   ```
+3. **Request a Copilot code review:**
+   ```bash
+   gh pr edit --add-reviewer copilot
+   ```
+4. **Wait for the review to complete.** Poll until Copilot finishes:
+   ```bash
+   # Check review status -- repeat until a review from copilot appears
+   gh pr reviews --json author,state,body | ConvertFrom-Json
+   ```
+   Keep polling (e.g., every 30 seconds) until a review with `author.login` of `copilot` (or `github-actions`) and a non-empty body appears. **Do not proceed until the review is complete.**
+5. **Read the review findings:**
+   ```bash
+   gh pr view --comments --json comments,reviews
+   ```
+6. **Process all findings** -- parse the review comments and categorize them by severity (Critical / Important / Suggestion) using the same severity definitions as the `@code-review` agent.
 
-**Exit criteria:** Review report received.
+**Exit criteria:** GitHub code review received and all findings parsed into the structured format.
 
 ### Phase 8 -- Fix Review Issues
 
-For each finding from the code review:
+After the GitHub code review completes, address **every finding** identified by the reviewer:
 
 1. Address **Critical** issues immediately -- these are blockers.
 2. Address **Important** issues -- these improve quality significantly.
 3. Apply **Suggestions** when they are low-effort and high-value.
 4. Run the full test suite after each fix.
 5. If a fix requires new behavior, loop back to Phase 3 (write a test first).
+6. After all fixes are applied, push the updated branch:
+   ```bash
+   git push
+   ```
 
-**Exit criteria:** All Critical and Important issues resolved, tests green, lint/compile passes without errors.
+**Exit criteria:** All Critical and Important issues resolved, tests green, lint/compile passes without errors, branch pushed.
 
 ### Phase 9 -- Re-Review
 
-After fixes are applied, invoke `@code-review` again to verify:
+After fixes are applied and pushed, request another GitHub code review:
 
-- If the review comes back **PASS** -> the loop is complete.
+1. **Re-request Copilot review:**
+   ```bash
+   gh pr edit --add-reviewer copilot
+   ```
+2. **Wait for the review to complete** (same polling process as Phase 7).
+3. **Read and process findings.**
+
+- If the review comes back **PASS** (no Critical or Important findings) -> the loop is complete.
 - If **NEEDS CHANGES** -> loop back to Phase 4 (Refactor) and continue.
 - Maximum **3 review iterations** to avoid infinite loops. After 3 rounds, present remaining items to the user for a decision.
 
@@ -292,7 +325,7 @@ NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
    - After REFACTOR: `refactor(scope): <description>`
    - After FUNCTIONAL TEST: `test(integration): add <feature> functional test` or `test(e2e): add <feature> functional test`
    - After REVIEW FIX: `fix(scope): address review feedback -- <summary>`
-6. **Never skip the review** -- every change must be independently reviewed.
+6. **Never skip the review** -- every change must be reviewed via GitHub Copilot on the PR.
 7. **Never write to `main`** -- all commits go to the feature branch. Suggest a PR to merge when the loop completes.
 8. **Verify before claiming** -- run commands, read output, present evidence. No "should work" claims.
 9. **Surface blockers early** -- if a review finding is ambiguous or requires a design decision, ask the user before proceeding.
@@ -315,7 +348,7 @@ Use this template to report progress to the user at each phase:
 | Refactor | Done/In Progress/Pending | <details> |
 | Functional Testing | Done/In Progress/Pending/Skipped | <details> |
 | Verification | Done/In Progress/Pending | <details> |
-| Code Review | Done/In Progress/Pending | <details> |
+| Code Review | Done/In Progress/Pending | <details -- GitHub PR review> |
 | Fix Review Issues | Done/In Progress/Pending | <details> |
 
 **Review verdict:** PASS / NEEDS CHANGES / CRITICAL ISSUES

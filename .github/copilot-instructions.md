@@ -115,6 +115,22 @@ Maintain a living product specification in `docs/product-spec.md`.
 - Sections: Overview, Features (with acceptance criteria), API Surface, UI Flows, Data Model, Known Limitations.
 - Use Conventional Commits for spec changes: `docs(spec): add <feature> specification` or `docs(spec): update <feature> specification`.
 
+## Git Worktrees
+
+When creating git worktrees, always place them inside the repo root under a `.worktrees/` subdirectory:
+
+```bash
+git worktree add .worktrees/<branch-name> <branch-name>
+```
+
+Never create worktrees as siblings of the repo root folder. (Doing so forces the agent to prompt to access the files since they are outside the scope of the session.)
+
+Also make sure your `.gitignore` has:
+
+```gitignore
+/.worktrees/
+```
+
 ## Branching Strategy
 
 - **Never commit directly to `main`.** Always create a feature branch first.
@@ -138,7 +154,7 @@ Dedicated agent prompts live in `.github/agents/` using the `.agent.md` format:
 | `tdd.agent.md` | Red → Green → Refactor cycle with Iron Law enforcement (no code without failing test) |
 | `functional-testing.agent.md` | Generate & maintain functional / E2E tests with verification-before-completion |
 | `refactor.agent.md` | Identify and remove duplication after each green step — YAGNI, simplicity first |
-| `code-review.agent.md` | Independent code review using a different LLM (`o4-mini`) with severity-based findings |
+| `code-review.agent.md` | Independent code review via GitHub Copilot PR review with severity-based findings |
 | `systematic-debugging.agent.md` | 4-phase root cause investigation — no fixes without understanding the problem first |
 | `dev-loop.agent.md` | Orchestrator: Brainstorm → Plan → TDD → Refactor → Functional Test → Verify → Review → Fix → Repeat |
 
@@ -148,7 +164,7 @@ Use `@dev-loop` to drive the full quality cycle for any feature. It coordinates
 all other agents in order and repeats until the code review passes cleanly.
 
 ```
-Brainstorm → Plan → TDD (Red→Green) → Refactor → Functional Test → Verify → Code Review (o4-mini) → Fix → Re-Review
+Brainstorm → Plan → TDD (Red→Green) → Refactor → Functional Test → Verify → Code Review (GitHub Copilot on PR) → Fix → Re-Review
 ```
 
 Use `@brainstorming` when exploring a new idea before committing to implementation.
