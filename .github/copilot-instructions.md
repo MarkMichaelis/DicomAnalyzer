@@ -96,6 +96,32 @@ If the language is not listed, infer conventions from the project's existing cod
   npx playwright test
   ```
 
+## Testing Conventions — C# / .NET
+
+| Layer | Tool | Location |
+|---|---|---|
+| Unit tests | MSTest | `tests/<ProjectName>.Tests/**/*Tests.cs` |
+| Integration tests | MSTest | `tests/<ProjectName>.Tests/**/*IntegrationTests.cs` |
+
+- Unit test files mirror the source tree (e.g., `src/DicomViewer.Core/Services/RoiService.cs` → `tests/DicomViewer.Tests/Unit/Services/RoiServiceTests.cs`).
+- Run tests with:
+  ```powershell
+  dotnet test <solution-or-project> --verbosity normal 2>&1
+  ```
+- Follow Arrange-Act-Assert (AAA) pattern.
+- Use `[DataRow]` for parameterized tests.
+- Mock only external I/O dependencies. Use real code paths wherever possible.
+
+## Code Style — C# / .NET
+
+- Use file-scoped namespaces.
+- After every step, run `dotnet build` to verify there are no compile errors.
+- Prefer `var` when the type is obvious from the right-hand side.
+- Use modern C# features: pattern matching, switch expressions, records, collection expressions.
+- Name files in PascalCase matching the class name; private fields in `_camelCase`.
+- Every public method must have an XML doc comment (`/// <summary>`).
+- Follow MVVM pattern for WPF: ViewModels in `ViewModels/`, Views in project root or `Views/`.
+
 ## Test Data — Live API
 
 A recording named **"Test Test Test"** exists in the connected Google Recorder account and is reserved for testing.
@@ -157,6 +183,10 @@ Dedicated agent prompts live in `.github/agents/` using the `.agent.md` format:
 | `code-review.agent.md` | Independent code review prompt & checklist — invoked via cross-model CLI (codex, claude, copilot) for severity-based findings |
 | `systematic-debugging.agent.md` | 4-phase root cause investigation — no fixes without understanding the problem first |
 | `dev-loop.agent.md` | Orchestrator: Brainstorm → Plan → TDD → Refactor → Functional Test → Verify → Cross-Model Review → Fix → Repeat |
+| `CSharpExpert.agent.md` | Expert C#/.NET guidance — SOLID, async, testing, modern C# features, WPF patterns |
+| `csharp-dotnet-janitor.agent.md` | Code cleanup, modernization, and tech debt remediation for C#/.NET codebases |
+| `github-actions-expert.agent.md` | Secure CI/CD workflows — action pinning, least privilege, .NET build/test/publish pipelines |
+| `wpf-expert.agent.md` | WPF desktop specialist — MVVM, data binding, custom controls, performance, image handling |
 
 ### Development Workflow
 
