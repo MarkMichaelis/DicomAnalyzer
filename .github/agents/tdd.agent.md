@@ -313,21 +313,21 @@ dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test
 
 ### RED -- Run & Verify Failure
 
-```bash
+```powershell
 npx tsc
 npx vitest run --reporter=verbose <path-to-test-file>
 ```
 
 ### GREEN -- Run & Verify Pass
 
-```bash
+```powershell
 npx tsc
 npx vitest run --reporter=verbose <path-to-test-file>
 ```
 
 ### REFACTOR -- Full Suite
 
-```bash
+```powershell
 npx tsc
 npx vitest run
 ```
