@@ -1,4 +1,4 @@
-﻿# QLABExportFrameDataExtract — Excel Data Extraction Tool Design
+﻿# QLabExportFrameDataExtract — Excel Data Extraction Tool Design
 
 **Date:** 2026-02-21
 **Status:** Approved
@@ -27,11 +27,11 @@ Create a .NET 10 console application that:
 ## CLI Interface
 
 \\\powershell
-QLABExportFrameDataExtract [--input-path <folder>]
+QLabExportFrameDataExtract [--input-path <folder>]
 \\\
 
 **Default:** \./SampleFiles/DICOM 20251125/\
-**With argument:** \QLABExportFrameDataExtract --input-path "C:\\custom\\path"\
+**With argument:** \QLabExportFrameDataExtract --input-path "C:\\custom\\path"\
 
 ## CSV Output Format
 
