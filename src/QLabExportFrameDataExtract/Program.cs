@@ -320,7 +320,7 @@ public static class JsonExporter
 			if (attenStr.Length >= 2) int.TryParse(attenStr.Substring(attenStr.Length - 2), out attenuation);
 
 			double ambientPsi = 0.0;
-			var m = System.Text.RegularExpressions.Regex.Match(fn, "^(\\d+\\.\\d+");
+			var m = System.Text.RegularExpressions.Regex.Match(fn, "^(\\d+\\.\\d+)");
 			if (m.Success)
 				double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out ambientPsi);
 			else
