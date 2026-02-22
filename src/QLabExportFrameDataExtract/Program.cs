@@ -1,5 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text.Json;
+using ScottPlot;
 
 namespace QLabExportFrameDataExtract;
 
@@ -63,6 +67,26 @@ class Program
 			return 0;
 		}
 
+		// if user requested plotting for concentration 4e3
+		var plotIdx = Array.IndexOf(args, "--plot-4e3");
+		if (plotIdx >= 0)
+		{
+			string defaultJson = Path.Combine(inputPath, "sample_master_output.json");
+			string defaultOut = Path.Combine(Directory.GetCurrentDirectory(), "plots", "4e3-concentration.png");
+			string jsonIn = defaultJson;
+			string outPng = defaultOut;
+			if (plotIdx + 1 < args.Length && !args[plotIdx + 1].StartsWith("-"))
+			{
+				outPng = args[plotIdx + 1];
+				plotIdx++;
+			}
+			// optional --plot-4e3-json <path>
+			var jsonIdx = Array.IndexOf(args, "--plot-4e3-json");
+			if (jsonIdx >= 0 && jsonIdx + 1 < args.Length) jsonIn = args[jsonIdx + 1];
+
+			return Plot4e3FromJson(jsonIn, outPng);
+		}
+
 		var extractor = new DataExtractor();
 		var records = extractor.ExtractAll(inputPath);
 
@@ -70,6 +94,209 @@ class Program
 		CsvExporter.Write(outFile, records);
 
 		Console.WriteLine($"Wrote {records.Count} rows to {outFile}");
+
+		// determine graph output options
+		string graphOutDir = Path.Combine(Directory.GetCurrentDirectory(), "plots");
+		if (Array.IndexOf(args, "--no-graphs") >= 0) return 0;
+		var graphIdx = Array.IndexOf(args, "--graph-output");
+		if (graphIdx >= 0 && graphIdx + 1 < args.Length) graphOutDir = args[graphIdx + 1];
+
+		// ensure directory exists
+		if (!Directory.Exists(graphOutDir)) Directory.CreateDirectory(graphOutDir);
+
+		// export JSON to graph output and plot all concentrations
+		string jsonForGraphs = Path.Combine(graphOutDir, "master_output.json");
+		JsonExporter.ExportFromCsv(outFile, jsonForGraphs);
+		var rc = PlotAllFromJson(jsonForGraphs, graphOutDir);
+		return rc;
+	}
+
+	private static string SanitizeFileName(string name)
+	{
+		foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+		return name.Replace(' ', '_');
+	}
+
+	private static int PlotAllFromJson(string jsonPath, string outputDir)
+	{
+		if (!File.Exists(jsonPath))
+		{
+			Console.Error.WriteLine($"JSON input not found: {jsonPath}");
+			return 2;
+		}
+
+		var text = File.ReadAllText(jsonPath);
+		using var doc = JsonDocument.Parse(text);
+		if (doc.RootElement.ValueKind != JsonValueKind.Array)
+		{
+			Console.Error.WriteLine("JSON root is not an array");
+			return 2;
+		}
+
+		// group elements by ConcentrationName
+		var byConcentration = new Dictionary<string, List<JsonElement>>();
+		foreach (var el in doc.RootElement.EnumerateArray())
+		{
+			if (!el.TryGetProperty("ConcentrationName", out var concProp)) continue;
+			if (concProp.ValueKind != JsonValueKind.String) continue;
+			var name = concProp.GetString() ?? "";
+			if (!byConcentration.ContainsKey(name)) byConcentration[name] = new List<JsonElement>();
+			byConcentration[name].Add(el);
+		}
+
+		if (!byConcentration.Any())
+		{
+			Console.Error.WriteLine("No concentration groups found in JSON");
+			return 2;
+		}
+
+		foreach (var kv in byConcentration)
+		{
+			var conc = kv.Key;
+			// build MmHg groups
+			var groups = new Dictionary<double, List<(double kpa, double psi)>>();
+			foreach (var el in kv.Value)
+			{
+				double? mmhg = null;
+				if (el.TryGetProperty("MmHg", out var mmhgProp) && mmhgProp.ValueKind == JsonValueKind.Number) mmhg = mmhgProp.GetDouble();
+				if (!mmhg.HasValue) continue;
+
+				double? kpa = null;
+				if (el.TryGetProperty("kPa", out var kpaProp) && kpaProp.ValueKind == JsonValueKind.Number) kpa = kpaProp.GetDouble();
+
+				double? psiNorm = null;
+				if (el.TryGetProperty("PsiNormalizedPixelIntensity", out var psiProp) && psiProp.ValueKind == JsonValueKind.Number) psiNorm = psiProp.GetDouble();
+
+				if (!kpa.HasValue || !psiNorm.HasValue) continue;
+
+				if (!groups.ContainsKey(mmhg.Value)) groups[mmhg.Value] = new List<(double, double)>();
+				groups[mmhg.Value].Add((kpa.Value, psiNorm.Value));
+			}
+
+			if (!groups.Any())
+			{
+				Console.WriteLine($"No data for concentration {conc}, skipping plot.");
+				continue;
+			}
+
+			var plt = new ScottPlot.Plot(1200, 800);
+			var colors = new System.Drawing.Color[] {
+				System.Drawing.Color.Blue,
+				System.Drawing.Color.Red,
+				System.Drawing.Color.Green,
+				System.Drawing.Color.Orange,
+				System.Drawing.Color.Purple,
+				System.Drawing.Color.Brown,
+				System.Drawing.Color.Cyan,
+				System.Drawing.Color.Magenta,
+				System.Drawing.Color.Yellow,
+				System.Drawing.Color.Black
+			};
+			int ci = 0;
+			foreach (var g in groups.OrderBy(g => g.Key))
+			{
+				var pts = g.Value.OrderBy(p => p.kpa).ToArray();
+				var xs = pts.Select(p => p.kpa).ToArray();
+				var ys = pts.Select(p => p.psi).ToArray();
+				plt.AddScatter(xs, ys, color: colors[ci % colors.Length], markerSize:6, label: $"MmHg={g.Key}");
+				ci++;
+			}
+
+			plt.Legend();
+			plt.Title($"Concentration {conc}");
+			plt.XLabel("kPa");
+			plt.YLabel("PsiNormalizedPixelIntensity");
+
+			var outPng = Path.Combine(outputDir, SanitizeFileName(conc) + ".png");
+			plt.SaveFig(outPng);
+			Console.WriteLine($"Wrote plot to {outPng}");
+		}
+
+		return 0;
+	}
+
+	private static int Plot4e3FromJson(string jsonPath, string outputPng)
+	{
+		if (!File.Exists(jsonPath))
+		{
+			Console.Error.WriteLine($"JSON input not found: {jsonPath}");
+			return 2;
+		}
+
+		var text = File.ReadAllText(jsonPath);
+		using var doc = JsonDocument.Parse(text);
+		if (doc.RootElement.ValueKind != JsonValueKind.Array)
+		{
+			Console.Error.WriteLine("JSON root is not an array");
+			return 2;
+		}
+
+		var groups = new Dictionary<double, List<(double kpa, double psi)>>();
+
+		foreach (var el in doc.RootElement.EnumerateArray())
+		{
+			if (!el.TryGetProperty("ConcentrationName", out var concProp)) continue;
+			if (concProp.ValueKind != JsonValueKind.String) continue;
+			if (concProp.GetString() != "4e3") continue;
+
+			double? mmhg = null;
+			if (el.TryGetProperty("MmHg", out var mmhgProp) && mmhgProp.ValueKind == JsonValueKind.Number)
+				mmhg = mmhgProp.GetDouble();
+
+			if (!mmhg.HasValue) continue;
+
+			double? kpa = null;
+			if (el.TryGetProperty("kPa", out var kpaProp) && kpaProp.ValueKind == JsonValueKind.Number)
+				kpa = kpaProp.GetDouble();
+
+			double? psiNorm = null;
+			if (el.TryGetProperty("PsiNormalizedPixelIntensity", out var psiProp) && psiProp.ValueKind == JsonValueKind.Number)
+				psiNorm = psiProp.GetDouble();
+
+			if (!kpa.HasValue || !psiNorm.HasValue) continue;
+
+			if (!groups.ContainsKey(mmhg.Value)) groups[mmhg.Value] = new List<(double, double)>();
+			groups[mmhg.Value].Add((kpa.Value, psiNorm.Value));
+		}
+
+		if (!groups.Any())
+		{
+			Console.Error.WriteLine("No data found for concentration 4e3");
+			return 2;
+		}
+
+		var plt = new ScottPlot.Plot(1200, 800);
+		var colors = new System.Drawing.Color[] {
+			System.Drawing.Color.Blue,
+			System.Drawing.Color.Red,
+			System.Drawing.Color.Green,
+			System.Drawing.Color.Orange,
+			System.Drawing.Color.Purple,
+			System.Drawing.Color.Brown,
+			System.Drawing.Color.Cyan,
+			System.Drawing.Color.Magenta,
+			System.Drawing.Color.Yellow,
+			System.Drawing.Color.Black
+		};
+		int ci = 0;
+		foreach (var kv in groups.OrderBy(g => g.Key))
+		{
+			var pts = kv.Value.OrderBy(p => p.kpa).ToArray();
+			var xs = pts.Select(p => p.kpa).ToArray();
+			var ys = pts.Select(p => p.psi).ToArray();
+			plt.AddScatter(xs, ys, color: colors[ci % colors.Length], markerSize:6, label: $"MmHg={kv.Key}");
+			ci++;
+		}
+
+		plt.Legend();
+		plt.Title("Concentration 4e3");
+		plt.XLabel("kPa");
+		plt.YLabel("PsiNormalizedPixelIntensity");
+
+		var dir = Path.GetDirectoryName(outputPng) ?? string.Empty;
+		if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+		plt.SaveFig(outputPng);
+		Console.WriteLine($"Wrote plot to {outputPng}");
 		return 0;
 	}
 }

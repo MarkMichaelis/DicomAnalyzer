@@ -260,3 +260,6 @@ publish/
 
 # Local tooling
 artifacts/
+ 
+# Ignore generated plots
+plots/
