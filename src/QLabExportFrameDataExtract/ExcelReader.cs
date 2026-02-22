@@ -177,12 +177,12 @@ public class ExcelReader
                 var results = new List<(string ColumnName, List<string> Values)>();
                 if (headerLineIndex == -1) return results;
 
-                // Split header into tokens by whitespace
-                var headerTokens = System.Text.RegularExpressions.Regex.Split(lines[headerLineIndex].Trim(), "\\s+");
+                // Split header into columns by two-or-more spaces (the export uses spaced columns)
+                var headerTokens = System.Text.RegularExpressions.Regex.Split(lines[headerLineIndex].Trim(), "\\s{2,}");
                 var echoIndexes = new List<int>();
                 for (int t = 0; t < headerTokens.Length; t++)
                 {
-                    if (headerTokens[t].IndexOf("Echo Mean", StringComparison.OrdinalIgnoreCase) >= 0 || headerTokens[t].IndexOf("Echo Mean(dB)", StringComparison.OrdinalIgnoreCase) >= 0 || headerTokens[t].IndexOf("Echo Mean(dB)", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (headerTokens[t].IndexOf("Mean", StringComparison.OrdinalIgnoreCase) >= 0 || headerTokens[t].IndexOf("Echo Mean", StringComparison.OrdinalIgnoreCase) >= 0 || headerTokens[t].IndexOf("Mean(dB)", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         echoIndexes.Add(t);
                     }
@@ -195,14 +195,14 @@ public class ExcelReader
                     var values = new List<string>();
                     for (int r = headerLineIndex + 1; r < lines.Count; r++)
                     {
-                        var line = lines[r].Trim();
-                        if (string.IsNullOrEmpty(line)) break;
-                        if (line.StartsWith("---")) break;
-                        var toks = System.Text.RegularExpressions.Regex.Split(line, "\\s+");
+                        var line = lines[r];
+                        if (string.IsNullOrWhiteSpace(line)) break;
+                        if (line.TrimStart().StartsWith("-")) break;
+                        var toks = System.Text.RegularExpressions.Regex.Split(line.Trim(), "\\s{2,}");
                         if (toks.Length <= colIdx) break;
-                        var token = toks[colIdx];
-                        // basic numeric check
-                        if (double.TryParse(token, out _))
+                        var token = toks[colIdx].Trim();
+                        // basic numeric check (allow negative and decimal)
+                        if (double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
                             values.Add(token);
                         else
                             break;
