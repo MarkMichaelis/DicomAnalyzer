@@ -23,6 +23,11 @@ public class DataExtractor
                 var meta = reader.ExtractMetadata();
                 var cols = reader.ExtractEchoMeanColumns();
 
+                if (!cols.Any())
+                {
+                    Console.Error.WriteLine($"No Echo Mean columns found in: {file}");
+                }
+
                 foreach (var col in cols)
                 {
                     for (int i = 0; i < col.Values.Count; i++)
@@ -40,9 +45,9 @@ public class DataExtractor
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Skip problematic files but continue processing others
+                Console.Error.WriteLine($"Failed to process file: {file} -> {ex.Message}");
             }
         }
 
