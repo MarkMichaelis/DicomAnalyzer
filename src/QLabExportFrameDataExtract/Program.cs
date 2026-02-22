@@ -331,7 +331,7 @@ public static class JsonExporter
 
 		// For atmospheric pixel intensity we need mapping by ConcentrationName and MmHg==0
 		// build mapping concentration -> list of groups
-		var groupMeta = new Dictionary<string, (string ExcelFilePath, double AmbientPressurePsi, double MmHg, int Attenuation, string Concentration, double Raw) >();
+		var groupMeta = new Dictionary<string, (string ExcelFilePath, string DICOMFilePath, string PatientName, string DICOMFileDate, double AmbientPressurePsi, double MmHg, int Attenuation, string Concentration, double Raw) >();
 		foreach (var g in groups)
 		{
 			var file = g.Key;
@@ -362,7 +362,13 @@ public static class JsonExporter
 			var parent = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty) ?? string.Empty;
 			var raw = stats.ContainsKey(file) ? stats[file].mean : double.NaN;
 
-			groupMeta[file] = (file, ambientPsi, mmhg, attenuation, parent, raw);
+			// extract representative metadata from the group's first row
+			var first = g.First();
+			var dicomPath = first.DICOMFilePath ?? string.Empty;
+			var patientName = first.PatientName ?? string.Empty;
+			var dicomDate = first.DICOMFileDate ?? string.Empty;
+
+			groupMeta[file] = (file, dicomPath, patientName, dicomDate, ambientPsi, mmhg, attenuation, parent, raw);
 		}
 
 		foreach (var g in groups)
@@ -399,6 +405,9 @@ public static class JsonExporter
 			{
 				["ExcelFilePath"] = file,
 				["ConcentrationName"] = meta.Concentration,
+				["DICOMFilePath"] = meta.DICOMFilePath,
+				["PatientName"] = meta.PatientName,
+				["DICOMFileDate"] = meta.DICOMFileDate,
 				["AmbientPressurePsi"] = NullableDouble(meta.AmbientPressurePsi),
 				["MmHg"] = NullableDouble(meta.MmHg),
 				["Attenuation"] = NullableDouble(meta.Attenuation),
