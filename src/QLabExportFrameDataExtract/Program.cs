@@ -51,21 +51,7 @@ class Program
 			}
 		}
 
-		// if user requested JSON export from existing CSV
-		var idx = Array.IndexOf(args, "--export-json");
-		if (idx >= 0 && idx + 1 < args.Length)
-		{
-			var jsonOut = args[idx + 1];
-			var csvPath = Path.Combine(Directory.GetCurrentDirectory(), "master_output.csv");
-			if (!File.Exists(csvPath))
-			{
-				Console.Error.WriteLine($"master_output.csv not found in {Directory.GetCurrentDirectory()}. Run extractor first.");
-				return 2;
-			}
-			JsonExporter.ExportFromCsv(csvPath, jsonOut);
-			Console.WriteLine($"Wrote JSON summary to {jsonOut}");
-			return 0;
-		}
+		// Export directly to JSON (CSV export removed)
 
 		// if user requested plotting for concentration 4e3
 		var plotIdx = Array.IndexOf(args, "--plot-4e3");
@@ -90,10 +76,9 @@ class Program
 		var extractor = new DataExtractor();
 		var records = extractor.ExtractAll(inputPath);
 
-		string outFile = Path.Combine(Directory.GetCurrentDirectory(), "master_output.csv");
-		CsvExporter.Write(outFile, records);
-
-		Console.WriteLine($"Wrote {records.Count} rows to {outFile}");
+		string outJson = Path.Combine(Directory.GetCurrentDirectory(), "master_output.json");
+		JsonExporter.ExportFromRecords(records, outJson);
+		Console.WriteLine($"Wrote JSON summary with {records.Count} records to {outJson}");
 
 		// determine graph output options
 		string graphOutDir = Path.Combine(Directory.GetCurrentDirectory(), "plots");
@@ -106,7 +91,7 @@ class Program
 
 		// export JSON to graph output and plot all concentrations
 		string jsonForGraphs = Path.Combine(graphOutDir, "master_output.json");
-		JsonExporter.ExportFromCsv(outFile, jsonForGraphs);
+		JsonExporter.ExportFromRecords(records, jsonForGraphs);
 		var rc = PlotAllFromJson(jsonForGraphs, graphOutDir);
 		return rc;
 	}
@@ -304,18 +289,12 @@ class Program
 // Additional CLI: export JSON summaries from an existing master CSV
 public static class JsonExporter
 {
-	public static void ExportFromCsv(string csvPath, string jsonOut)
+	public static void ExportFromRecords(IEnumerable<FrameRecord> records, string jsonOut)
 	{
-		if (!File.Exists(csvPath)) throw new FileNotFoundException(csvPath);
-
-		var lines = File.ReadAllLines(csvPath).Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
-		var rows = lines.Select(l => ParseCsvLine(l)).ToList();
-
-		// build lookup table
 		var lookup = AttenuationLookupTable.Table;
 
 		// group by ExcelFilePath
-		var groups = rows.GroupBy(r => r.ExcelFilePath).ToList();
+		var groups = records.GroupBy(r => r.ExcelFilePath).ToList();
 
 		var summaries = new List<object>();
 
@@ -329,40 +308,31 @@ public static class JsonExporter
 			stats[g.Key] = (mean, std);
 		}
 
-		// For atmospheric pixel intensity we need mapping by ConcentrationName and MmHg==0
-		// build mapping concentration -> list of groups
-		var groupMeta = new Dictionary<string, (string ExcelFilePath, string DICOMFilePath, string PatientName, string DICOMFileDate, double AmbientPressurePsi, double MmHg, int Attenuation, string Concentration, double Raw) >();
+		// build metadata per group
+		var groupMeta = new Dictionary<string, (string ExcelFilePath, string DICOMFilePath, string PatientName, string DICOMFileDate, double AmbientPressurePsi, double MmHg, int Attenuation, string Concentration, double Raw)>();
 		foreach (var g in groups)
 		{
 			var file = g.Key;
 			var fn = Path.GetFileNameWithoutExtension(file);
-			// Attenuation: last two digits of filename
+
 			var attenStr = new string(fn.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
 			int attenuation = 0;
-			if (attenStr.Length >= 2) attenuation = int.Parse(attenStr.Substring(attenStr.Length - 2));
+			if (attenStr.Length >= 2) int.TryParse(attenStr.Substring(attenStr.Length - 2), out attenuation);
 
-			// AmbientPressurePsi: parse leading numeric token. If it's a decimal (e.g. 0.4) use it directly.
-			// Otherwise take first up-to-2 digits and divide by 10 (e.g. '04' -> 0.4)
 			double ambientPsi = 0.0;
-			var m = System.Text.RegularExpressions.Regex.Match(fn, "^(\\d+\\.\\d+)");
+			var m = System.Text.RegularExpressions.Regex.Match(fn, "^(\\d+\\.\\d+");
 			if (m.Success)
-			{
 				double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out ambientPsi);
-			}
 			else
 			{
 				var m2 = System.Text.RegularExpressions.Regex.Match(fn, "^(\\D*?)(\\d{1,2})");
-				if (m2.Success)
-				{
-					if (int.TryParse(m2.Groups[2].Value, out var fd)) ambientPsi = fd / 10.0;
-				}
+				if (m2.Success && int.TryParse(m2.Groups[2].Value, out var fd)) ambientPsi = fd / 10.0;
 			}
-			double mmhg = ambientPsi * 50.0;
 
+			double mmhg = ambientPsi * 50.0;
 			var parent = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty) ?? string.Empty;
 			var raw = stats.ContainsKey(file) ? stats[file].mean : double.NaN;
 
-			// extract representative metadata from the group's first row
 			var first = g.First();
 			var dicomPath = first.DICOMFilePath ?? string.Empty;
 			var patientName = first.PatientName ?? string.Empty;
@@ -379,7 +349,6 @@ public static class JsonExporter
 			var raw = stats[file].mean;
 			var std = stats[file].std;
 
-			// lookup attenuation
 			lookup.TryGetValue(meta.Attenuation, out var lookupEntry);
 
 			double decibelAdj = lookupEntry?.DecibelAdjustmentValue ?? 0.0;
@@ -387,7 +356,6 @@ public static class JsonExporter
 
 			double psiNormalized = double.IsNaN(raw) ? double.NaN : raw + decibelAdj;
 
-			// find atmospheric (MmHg==0) within same concentration
 			double? atmospheric = null;
 			var sameCon = groupMeta.Values.Where(v => v.Concentration == meta.Concentration && Math.Abs(v.MmHg - 0.0) < 1e-6).ToList();
 			if (sameCon.Any())
@@ -425,15 +393,8 @@ public static class JsonExporter
 			summaries.Add(obj);
 		}
 
-		var json = System.Text.Json.JsonSerializer.Serialize(summaries, new System.Text.Json.JsonSerializerOptions{WriteIndented=true});
+		var json = System.Text.Json.JsonSerializer.Serialize(summaries, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
 		File.WriteAllText(jsonOut, json);
-	}
-
-	private static (string ExcelFilePath, string DICOMFilePath, string PatientName, string DICOMFileDate, string ColumnName, int FrameNumber, string Value_dB) ParseCsvLine(string line)
-	{
-		// simple split by comma, CSV values don't contain commas in this dataset
-		var parts = line.Split(',');
-		return (parts[0], parts[1], parts[2], parts[3], parts[4], int.Parse(parts[5]), parts[6]);
 	}
 }
 
