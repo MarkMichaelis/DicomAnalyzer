@@ -178,7 +178,8 @@ public class ExcelReader
                 if (headerLineIndex == -1) return results;
 
                 // Split header into columns by two-or-more spaces (the export uses spaced columns)
-                var headerTokens = System.Text.RegularExpressions.Regex.Split(lines[headerLineIndex].Trim(), "\\s{2,}");
+                // split on tabs or runs of two-or-more spaces
+                var headerTokens = System.Text.RegularExpressions.Regex.Split(lines[headerLineIndex].Trim(), "\\t|\\s{2,}");
                 var echoIndexes = new List<int>();
                 for (int t = 0; t < headerTokens.Length; t++)
                 {
@@ -198,7 +199,7 @@ public class ExcelReader
                         var line = lines[r];
                         if (string.IsNullOrWhiteSpace(line)) break;
                         if (line.TrimStart().StartsWith("-")) break;
-                        var toks = System.Text.RegularExpressions.Regex.Split(line.Trim(), "\\s{2,}");
+                        var toks = System.Text.RegularExpressions.Regex.Split(line.Trim(), "\\t|\\s{2,}");
                         if (toks.Length <= colIdx) break;
                         var token = toks[colIdx].Trim();
                         // basic numeric check (allow negative and decimal)

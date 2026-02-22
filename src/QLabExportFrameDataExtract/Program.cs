@@ -28,6 +28,25 @@ class Program
 			return 2;
 		}
 
+		// Debug mode: inspect a single file
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (args[i] == "--debug-file" && i + 1 < args.Length)
+			{
+				var file = args[i + 1];
+				var reader = new ExcelReader(file);
+				var meta = reader.ExtractMetadata();
+				Console.WriteLine($"Metadata: DICOMFilePath={meta.DICOMFilePath}, PatientName={meta.PatientName}, DICOMFileDate={meta.DICOMFileDate}");
+				var cols = reader.ExtractEchoMeanColumns();
+				Console.WriteLine($"Found {cols.Count} Echo columns");
+				foreach (var c in cols)
+				{
+					Console.WriteLine($"Column: {c.ColumnName}, Values: {string.Join(",", c.Values.Take(5))} (showing up to 5)");
+				}
+				return 0;
+			}
+		}
+
 		var extractor = new DataExtractor();
 		var records = extractor.ExtractAll(inputPath);
 

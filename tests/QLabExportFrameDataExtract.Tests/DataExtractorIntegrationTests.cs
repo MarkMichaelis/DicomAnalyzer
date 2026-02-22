@@ -35,8 +35,8 @@ public class DataExtractorIntegrationTests
             ws.Cell("B3").Value = "DICOM2";
             ws.Cell("B5").Value = "P2";
             ws.Cell("B7").Value = "2025-11-26";
-            ws.Cell(2, 2).Value = "Echo Mean (dB)"; // header at row2 col2
-            ws.Cell(3, 2).Value = -6.1;
+            ws.Cell(2, 3).Value = "Echo Mean (dB)"; // header at row2 col3
+            ws.Cell(3, 3).Value = -6.1;
             wb.SaveAs(f2);
         }
 
