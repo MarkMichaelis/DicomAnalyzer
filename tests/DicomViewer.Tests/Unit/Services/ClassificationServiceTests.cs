@@ -72,9 +72,11 @@ public class ClassificationServiceTests
     public void Classify_SampleFiles_CEUS()
     {
         // Integration-style test with real files
-        var sampleDir = Path.GetFullPath(
+        var baseDir = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
                 "SampleFiles", "DICOM 20251125"));
+        var dicomSubDir = Path.Combine(baseDir, "DICOM");
+        var sampleDir = Directory.Exists(dicomSubDir) ? dicomSubDir : baseDir;
         if (!Directory.Exists(sampleDir)) return;
 
         var fileService = new DicomFileService();

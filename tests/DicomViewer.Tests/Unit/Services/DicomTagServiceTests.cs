@@ -7,9 +7,16 @@ namespace DicomViewer.Tests.Unit.Services;
 /// </summary>
 public class DicomTagServiceTests
 {
-    private static readonly string SampleDir = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "SampleFiles", "DICOM 20251125"));
+    private static readonly string SampleDir = ResolveSampleDir();
+
+    private static string ResolveSampleDir()
+    {
+        var baseDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "SampleFiles", "DICOM 20251125"));
+        var dicomSubDir = Path.Combine(baseDir, "DICOM");
+        return Directory.Exists(dicomSubDir) ? dicomSubDir : baseDir;
+    }
 
     private readonly DicomTagService _sut = new();
 

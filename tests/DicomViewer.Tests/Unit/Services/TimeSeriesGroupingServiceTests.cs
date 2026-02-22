@@ -126,10 +126,8 @@ public class TimeSeriesGroupingServiceTests
     [Fact]
     public void GroupFiles_SampleDirectory_60s()
     {
-        var sampleDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-                "SampleFiles", "DICOM 20251125"));
-        if (!Directory.Exists(sampleDir)) return;
+        var sampleDir = ResolveSampleDir();
+        if (!HasSampleFiles(sampleDir)) return;
 
         var fileService = new DicomFileService();
         var files = fileService.LoadFiles(sampleDir);
@@ -142,10 +140,8 @@ public class TimeSeriesGroupingServiceTests
     [Fact]
     public void GroupFiles_SampleDirectory_600s()
     {
-        var sampleDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-                "SampleFiles", "DICOM 20251125"));
-        if (!Directory.Exists(sampleDir)) return;
+        var sampleDir = ResolveSampleDir();
+        if (!HasSampleFiles(sampleDir)) return;
 
         var fileService = new DicomFileService();
         var files = fileService.LoadFiles(sampleDir);
@@ -158,4 +154,22 @@ public class TimeSeriesGroupingServiceTests
 
     private static DicomFileEntry MakeEntry(string name, DateTime? dt) =>
         new() { FileName = name, FilePath = name, AcquisitionDateTime = dt };
+
+    private static string ResolveSampleDir()
+    {
+        var baseDir = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "SampleFiles", "DICOM 20251125"));
+        var dicomSubDir = Path.Combine(baseDir, "DICOM");
+        return Directory.Exists(dicomSubDir) ? dicomSubDir : baseDir;
+    }
+
+    private static bool HasSampleFiles(string dir)
+    {
+        return Directory.Exists(dir)
+            && Directory.GetFiles(dir).Any(f =>
+                !Path.GetExtension(f).Equals(".roi", StringComparison.OrdinalIgnoreCase)
+                && !Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase)
+                && !Path.GetExtension(f).Equals(".settings", StringComparison.OrdinalIgnoreCase));
+    }
 }
