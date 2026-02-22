@@ -1,6 +1,9 @@
-﻿using ClosedXML.Excel;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using ExcelDataReader;
 
 namespace QLabExportFrameDataExtract;
 
@@ -15,17 +18,31 @@ public class ExcelReader
 
     public ExcelMetadata ExtractMetadata()
     {
-        using var wb = new XLWorkbook(_path);
-        var ws = wb.Worksheets.First();
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        var meta = new ExcelMetadata
+        using var stream = File.Open(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = ExcelReaderFactory.CreateReader(stream);
+        var ds = reader.AsDataSet();
+        var table = ds.Tables[0];
+
+        string dicomPath = string.Empty;
+        string patient = string.Empty;
+        string date = string.Empty;
+
+        // B3 -> row index 2, col index 1
+        if (table.Rows.Count > 2 && table.Columns.Count > 1)
+            dicomPath = table.Rows[2][1]?.ToString() ?? string.Empty;
+        if (table.Rows.Count > 4 && table.Columns.Count > 1)
+            patient = table.Rows[4][1]?.ToString() ?? string.Empty;
+        if (table.Rows.Count > 6 && table.Columns.Count > 1)
+            date = table.Rows[6][1]?.ToString() ?? string.Empty;
+
+        return new ExcelMetadata
         {
-            DICOMFilePath = ws.Cell("B3").GetString() ?? string.Empty,
-            PatientName = ws.Cell("B5").GetString() ?? string.Empty,
-            DICOMFileDate = ws.Cell("B7").GetString() ?? string.Empty
+            DICOMFilePath = dicomPath,
+            PatientName = patient,
+            DICOMFileDate = date
         };
-
-        return meta;
     }
 
     /// <summary>
@@ -34,49 +51,48 @@ public class ExcelReader
     /// </summary>
     public List<(string ColumnName, List<string> Values)> ExtractEchoMeanColumns(int headerSearchLimit = 20)
     {
-        using var wb = new XLWorkbook(_path);
-        var ws = wb.Worksheets.First();
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        // Find header row by searching the top N rows for any cell that contains the header text
+        using var stream = File.Open(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = ExcelReaderFactory.CreateReader(stream);
+        var ds = reader.AsDataSet();
+        var table = ds.Tables[0];
+
         int headerRow = -1;
-        for (int r = 1; r <= headerSearchLimit; r++)
+        int maxSearch = Math.Min(headerSearchLimit, table.Rows.Count);
+        for (int r = 0; r < maxSearch; r++)
         {
-            var row = ws.Row(r);
-            if (row.CellsUsed().Any(c => c.GetString().Contains("Echo Mean (dB)", System.StringComparison.OrdinalIgnoreCase)))
+            for (int c = 0; c < table.Columns.Count; c++)
             {
-                headerRow = r;
-                break;
+                var cell = table.Rows[r][c]?.ToString() ?? string.Empty;
+                if (cell.IndexOf("Echo Mean (dB)", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    headerRow = r;
+                    break;
+                }
             }
+            if (headerRow != -1) break;
         }
 
         var results = new List<(string ColumnName, List<string> Values)>();
-        if (headerRow == -1)
-            return results;
+        if (headerRow == -1) return results;
 
-        int lastCol = ws.Row(headerRow).LastCellUsed().Address.ColumnNumber;
-
-        for (int col = 1; col <= lastCol; col++)
+        for (int c = 0; c < table.Columns.Count; c++)
         {
-            var headerCell = ws.Cell(headerRow, col);
-            var headerText = headerCell.GetString();
-            if (string.IsNullOrWhiteSpace(headerText))
-                continue;
+            var headerText = table.Rows[headerRow][c]?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(headerText)) continue;
+            if (headerText.IndexOf("Echo Mean (dB)", StringComparison.OrdinalIgnoreCase) < 0) continue;
 
-            if (headerText.Contains("Echo Mean (dB)", System.StringComparison.OrdinalIgnoreCase))
+            var values = new List<string>();
+            for (int r = headerRow + 1; r < table.Rows.Count; r++)
             {
-                var values = new List<string>();
-                int row = headerRow + 1;
-                while (true)
-                {
-                    var cell = ws.Cell(row, col);
-                    if (cell.IsEmpty())
-                        break;
-                    values.Add(cell.GetString());
-                    row++;
-                }
-
-                results.Add((headerText, values));
+                var cell = table.Rows[r][c];
+                var s = cell?.ToString();
+                if (string.IsNullOrWhiteSpace(s)) break;
+                values.Add(s);
             }
+
+            results.Add((headerText, values));
         }
 
         return results;
