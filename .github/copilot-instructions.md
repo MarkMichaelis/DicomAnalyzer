@@ -1,8 +1,8 @@
-# Project — Copilot Workspace Instructions
+# DicomRoiAnalyzer — Copilot Workspace Instructions
 
 ## Project Overview
 
-Project is a **PowerShell module** that interfaces with the Google Recorder gRPC-Web API at `recorder.google.com`. It provides cmdlets for authentication and recording management.
+DicomRoiAnalyzer is a **WPF desktop application** (.NET 10, C# 14) for DICOM ultrasound image viewing and ROI (Region of Interest) analysis. It provides time-series grouping, pixel intensity statistics, Excel export, and multi-ROI management.
 
 ## Language Detection
 
@@ -100,8 +100,8 @@ If the language is not listed, infer conventions from the project's existing cod
 
 | Layer | Tool | Location |
 |---|---|---|
-| Unit tests | MSTest | `tests/<ProjectName>.Tests/**/*Tests.cs` |
-| Integration tests | MSTest | `tests/<ProjectName>.Tests/**/*IntegrationTests.cs` |
+| Unit tests | xUnit | `tests/<ProjectName>.Tests/**/*Tests.cs` |
+| Integration tests | xUnit | `tests/<ProjectName>.Tests/**/*IntegrationTests.cs` |
 
 - Unit test files mirror the source tree (e.g., `src/DicomViewer.Core/Services/RoiService.cs` → `tests/DicomViewer.Tests/Unit/Services/RoiServiceTests.cs`).
 - Run tests with:
@@ -110,6 +110,7 @@ If the language is not listed, infer conventions from the project's existing cod
   ```
 - Follow Arrange-Act-Assert (AAA) pattern.
 - Use `[DataRow]` for parameterized tests.
+- Use xUnit conventions: `[Fact]` for single tests, `[Theory]` + `[InlineData]` for parameterized tests.
 - Mock only external I/O dependencies. Use real code paths wherever possible.
 
 ## Code Style — C# / .NET

@@ -18,7 +18,7 @@ When invoked:
 - Cover security (authentication, authorization, data protection)
 - Use and explain patterns: Async/Await, Dependency Injection, Unit of Work, CQRS, Gang of Four
 - Apply SOLID principles
-- Plan and write tests (TDD/BDD) with the project's test framework (MSTest)
+- Plan and write tests (TDD/BDD) with the project's test framework (xUnit)
 - Improve performance (memory, async code, data access)
 
 ## Project Context
@@ -26,7 +26,7 @@ When invoked:
 - **Application type:** WPF desktop application for DICOM ultrasound analysis
 - **Target framework:** .NET 10, C# 14
 - **UI framework:** WPF with MVVM pattern
-- **Test framework:** MSTest
+- **Test framework:** xUnit
 - **Key libraries:** fo-dicom (DICOM parsing), ClosedXML (Excel export)
 
 ## General C# Development
@@ -150,12 +150,12 @@ When invoked:
 - Test through **public APIs**; don't change visibility; avoid `InternalsVisibleTo`.
 - Assert specific values and edge cases, not vague outcomes.
 
-### MSTest Conventions (this project)
+### xUnit Conventions (this project)
 
-- Class: `[TestClass]`
-- Test: `[TestMethod]`
-- Setup/teardown: `[TestInitialize]`, `[TestCleanup]`
-- Parameterized tests: `[TestMethod]` + `[DataRow]`
+- Class: `public class MyTests`
+- Test: `[Fact]`
+- Setup/teardown: constructor / `IDisposable`
+- Parameterized tests: `[Theory]` + `[InlineData]`
 
 ### Mocking
 

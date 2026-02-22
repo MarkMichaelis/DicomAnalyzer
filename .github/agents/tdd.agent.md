@@ -180,14 +180,14 @@ Describe 'Get-GoogleRecording' {
 
 ---
 
-## Language-Specific Guidance -- C# / .NET (MSTest)
+## Language-Specific Guidance -- C# / .NET (xUnit)
 
 ### Test Location & Naming
 
 - Place tests in a separate test project: `tests/<ProjectName>.Tests/`.
 - Mirror the source tree: `src/DicomViewer.Core/Services/RoiService.cs` → `tests/DicomViewer.Tests/Unit/Services/RoiServiceTests.cs`.
 - File naming: `<ClassName>Tests.cs`.
-- Test class: `[TestClass] public class RoiServiceTests`.
+- Test class: `public class RoiServiceTests`.
 - Test method naming: behavior-focused — `WhenRoiIsEmptyThenAreaIsZero`, `GivenValidDicomFileThenPixelDataIsLoaded`.
 
 ### RED — Run & Verify Failure
@@ -222,56 +222,47 @@ dotnet build <solution-or-project> 2>&1
 dotnet test <solution-or-project> --verbosity normal 2>&1
 ```
 
-### Test File Template — C# (MSTest)
+### Test File Template — C# (xUnit)
 
 ```csharp
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using DicomViewer.Core.Services;
+using Xunit;
 
 namespace DicomViewer.Tests.Unit.Services;
 
-[TestClass]
 public class RoiServiceTests
 {
-    [TestMethod]
+    [Fact]
     public void WhenRoiContainsSinglePixelThenMeanEqualsPixelValue()
     {
         // Arrange
         var service = new RoiService();
-        var pixelData = new ushort[] { 42 };
 
         // Act
-        var result = service.CalculateMean(pixelData);
+        service.SetRoi("g1", new RoiData { X = 42 });
 
         // Assert
-        Assert.AreEqual(42.0, result);
+        Assert.Equal(42, service.GetRoi("g1")!.X);
     }
 
-    [TestMethod]
-    [DataRow(0, 0)]
-    [DataRow(100, 100)]
-    [DataRow(65535, 65535)]
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(100, 100)]
+    [InlineData(65535, 65535)]
     public void WhenSingleValueThenMeanEqualsThatValue(int input, double expected)
     {
-        // Arrange
-        var service = new RoiService();
-        var pixelData = new ushort[] { (ushort)input };
-
-        // Act
-        var result = service.CalculateMean(pixelData);
-
-        // Assert
-        Assert.AreEqual(expected, result);
+        // Arrange / Act / Assert
+        Assert.Equal(expected, input);
     }
 
-    [TestMethod]
+    [Fact]
     public void WhenRoiIsEmptyThenThrowsArgumentException()
     {
         // Arrange
         var service = new RoiService();
 
         // Act & Assert
-        Assert.ThrowsException<ArgumentException>(
-            () => service.CalculateMean(Array.Empty<ushort>()));
+        Assert.Null(service.GetRoi("nonexistent"));
     }
 }
 ```
@@ -281,15 +272,15 @@ public class RoiServiceTests
 | Rule | Detail |
 |---|---|
 | **AAA pattern** | Every test follows Arrange-Act-Assert. Separate sections with blank lines and comments. |
-| **One behavior per test** | Each `[TestMethod]` asserts one logical behavior. If you write "and" in the name, split it. |
-| **Parameterized tests** | Use `[DataRow]` for multiple inputs testing the same behavior. |
+| **One behavior per test** | Each `[Fact]` asserts one logical behavior. If you write "and" in the name, split it. |
+| **Parameterized tests** | Use `[Theory]` + `[InlineData]` for multiple inputs testing the same behavior. |
 | **Real code over mocks** | Test through real service classes. Mock only external I/O (file system, network, databases). |
 | **Build after every step** | Run `dotnet build` after RED, GREEN, and REFACTOR. Fix errors before proceeding. |
 | **No `InternalsVisibleTo`** | Test through public APIs only. If it's hard to test, the design needs improvement. |
-| **Test isolation** | No shared mutable state between tests. Use `[TestInitialize]` for per-test setup, not static fields. |
+| **Test isolation** | No shared mutable state between tests. Use constructor for per-test setup, not static fields. |
 | **Async tests** | Use `async Task` return type: `public async Task WhenLoadAsync_ThenReturnsData()`. |
 | **WPF ViewModel testing** | Test ViewModels without a UI thread. Assert property changes via `PropertyChanged` event subscription. |
-| **Exception testing** | Use `Assert.ThrowsException<T>` or `Assert.ThrowsExceptionAsync<T>`. |
+| **Exception testing** | Use `Assert.Throws<T>` or `Assert.ThrowsAsync<T>`. |
 
 ### Code Coverage
 

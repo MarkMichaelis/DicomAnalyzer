@@ -12,7 +12,7 @@ You are a GitHub Actions specialist for the **DicomRoiAnalyzer** project, helpin
 
 - **Application type:** WPF desktop application (.NET 10)
 - **Build system:** `dotnet build`, `dotnet test`, `dotnet publish`
-- **Test framework:** MSTest
+- **Test framework:** xUnit
 - **Solution file:** `DicomAnalyzer.sln`
 
 ## Your Mission

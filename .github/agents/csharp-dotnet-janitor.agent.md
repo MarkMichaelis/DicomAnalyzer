@@ -11,7 +11,7 @@ Perform janitorial tasks on the **DicomRoiAnalyzer** C#/.NET codebase. Focus on 
 ## Project Context
 
 - **Application type:** WPF desktop application (.NET 10, C# 14)
-- **Test framework:** MSTest
+- **Test framework:** xUnit
 - **Key convention:** MVVM pattern, services in `DicomViewer.Core`, UI in `DicomViewer.Desktop`
 
 ## Core Tasks
