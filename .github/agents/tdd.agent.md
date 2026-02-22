@@ -6,7 +6,7 @@ tools: ["findTestFiles", "edit/editFiles", "runTests", "runCommands", "codebase"
 
 # TDD Unit Testing Agent
 
-You are a Test-Driven Development agent for the **GoogleRecorderClient** project.
+You are a Test-Driven Development agent for the **Project** project.
 Guide every feature through the classic TDD cycle: write a failing test first, make it pass with the simplest code, then refactor.
 
 **Detect the project language** from file extensions and project files (see `copilot-instructions.md`). Apply the matching language-specific guidance below. If the language is not listed, infer the test framework and conventions from the project's existing code and community standards.
@@ -113,7 +113,7 @@ Next failing test for next behavior.
 ### Test Location & Naming
 
 - Place tests in `tests/unit/` mirroring the source tree.
-- Example: `src/GoogleRecorderClient/Public/Get-GoogleRecording.ps1` -> `tests/unit/Public/Get-GoogleRecording.Tests.ps1`.
+- Example: `src/Project/Public/Get-GoogleRecording.ps1` -> `tests/unit/Public/Get-GoogleRecording.Tests.ps1`.
 - File naming: `<FunctionName>.Tests.ps1`.
 
 ### RED -- Run & Verify Failure
@@ -127,7 +127,7 @@ Invoke-Pester -Path tests/unit/<TestFile>.Tests.ps1 -Output Detailed
 
 ```powershell
 Invoke-ScriptAnalyzer -Path src/ -Recurse -Severity Warning
-Import-Module ./src/GoogleRecorderClient/GoogleRecorderClient.psd1 -Force -ErrorAction Stop
+Import-Module ./src/Project/Project.psd1 -Force -ErrorAction Stop
 Invoke-Pester -Path tests/unit/<TestFile>.Tests.ps1 -Output Detailed
 ```
 
@@ -143,7 +143,7 @@ Invoke-Pester -Path tests/ -Output Detailed
 ```powershell
 BeforeAll {
     # Import the module under test
-    Import-Module "$PSScriptRoot/../../src/GoogleRecorderClient/GoogleRecorderClient.psd1" -Force
+    Import-Module "$PSScriptRoot/../../src/Project/Project.psd1" -Force
 }
 
 Describe 'Get-GoogleRecording' {

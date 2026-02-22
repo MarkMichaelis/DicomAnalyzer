@@ -1,8 +1,8 @@
-# GoogleRecorderClient — Copilot Workspace Instructions
+# Project — Copilot Workspace Instructions
 
 ## Project Overview
 
-GoogleRecorderClient is a **PowerShell module** that interfaces with the Google Recorder gRPC-Web API at `recorder.google.com`. It provides cmdlets for authentication and recording management.
+Project is a **PowerShell module** that interfaces with the Google Recorder gRPC-Web API at `recorder.google.com`. It provides cmdlets for authentication and recording management.
 
 ## Language Detection
 
@@ -48,7 +48,7 @@ If the language is not listed, infer conventions from the project's existing cod
 - After every step, run `Invoke-ScriptAnalyzer` to check for lint issues and `Import-Module ... -Force` to verify the module loads:
   ```powershell
   Invoke-ScriptAnalyzer -Path src/ -Recurse -Severity Warning
-  Import-Module ./src/GoogleRecorderClient/GoogleRecorderClient.psd1 -Force -ErrorAction Stop
+  Import-Module ./src/Project/Project.psd1 -Force -ErrorAction Stop
   ```
 - Prefer `[CmdletBinding()]` and `param()` blocks for all functions.
 - Use **approved verbs** only (`Get-Verb` to list them).
@@ -76,7 +76,7 @@ If the language is not listed, infer conventions from the project's existing cod
 | Unit tests | Pester | `tests/unit/**/*.Tests.ps1` |
 | Integration tests | Pester | `tests/integration/**/*.Tests.ps1` |
 
-- Unit test files mirror the source tree (e.g., `src/GoogleRecorderClient/Public/Get-GoogleRecording.ps1` → `tests/unit/Public/Get-GoogleRecording.Tests.ps1`).
+- Unit test files mirror the source tree (e.g., `src/Project/Public/Get-GoogleRecording.ps1` → `tests/unit/Public/Get-GoogleRecording.Tests.ps1`).
 - Run tests with:
   ```powershell
   Invoke-Pester -Path tests/ -Output Detailed

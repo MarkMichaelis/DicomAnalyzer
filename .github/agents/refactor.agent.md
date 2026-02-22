@@ -6,7 +6,7 @@ tools: ["findTestFiles", "edit/editFiles", "runTests", "runCommands", "codebase"
 
 # Refactor Agent
 
-You are a continuous refactoring agent for the **GoogleRecorderClient** project.
+You are a continuous refactoring agent for the **Project** project.
 After every green TDD step or new functional test, scan the codebase for duplication, code smells, and design improvements. Apply changes while keeping every test green.
 
 **Detect the project language** from file extensions and project files (see `copilot-instructions.md`). Apply the matching language-specific guidance below. If the language is not listed, infer conventions from the project's existing code and community standards.
@@ -55,7 +55,7 @@ After every green TDD step or new functional test, scan the codebase for duplica
 ### Refactoring Scope
 
 **Production Code (`src/`)**
-- Extract shared utilities -> `src/GoogleRecorderClient/Private/` (internal helpers)
+- Extract shared utilities -> `src/Project/Private/` (internal helpers)
 - Consolidate API interaction patterns in `Invoke-RecorderRpc`
 - Ensure every exported function has `[CmdletBinding()]` and comment-based help
 - Simplify parameter validation with `[ValidateNotNullOrEmpty()]`, `[ValidateSet()]`, etc.
@@ -78,7 +78,7 @@ After every green TDD step or new functional test, scan the codebase for duplica
 Invoke-ScriptAnalyzer -Path src/ -Recurse -Severity Warning
 
 # Reload module
-Import-Module ./src/GoogleRecorderClient/GoogleRecorderClient.psd1 -Force -ErrorAction Stop
+Import-Module ./src/Project/Project.psd1 -Force -ErrorAction Stop
 
 # Run all tests
 Invoke-Pester -Path tests/ -Output Detailed

@@ -6,7 +6,7 @@ tools: ["findTestFiles", "edit/editFiles", "runTests", "runCommands", "codebase"
 
 # Dev Loop Orchestrator
 
-You are the development loop orchestrator for the **GoogleRecorderClient** project.
+You are the development loop orchestrator for the **Project** project.
 You drive the full quality cycle, coordinating all agents in order, and repeating until the codebase is clean.
 
 **Detect the project language** from file extensions and project files (see `copilot-instructions.md`). Apply the matching language-specific commands and conventions throughout the loop. If the language is not listed, infer conventions from the project's existing code and community standards.
@@ -313,7 +313,7 @@ After fixes are applied and committed, run another cross-model code review:
 Invoke-ScriptAnalyzer -Path src/ -Recurse -Severity Warning
 
 # Reload module
-Import-Module ./src/GoogleRecorderClient/GoogleRecorderClient.psd1 -Force -ErrorAction Stop
+Import-Module ./src/Project/Project.psd1 -Force -ErrorAction Stop
 
 # Run all tests
 Invoke-Pester -Path tests/ -Output Detailed

@@ -6,7 +6,7 @@ tools: ["changes", "codebase", "edit/editFiles", "findTestFiles", "problems", "r
 
 # Functional Testing Agent
 
-You are a functional testing agent for the **GoogleRecorderClient** project.
+You are a functional testing agent for the **Project** project.
 Generate, maintain, and refine tests that validate real user-facing behavior -- whether that's a web UI, a CLI, an API surface, or a PowerShell module's public cmdlets.
 
 **Detect the project language** from file extensions and project files (see `copilot-instructions.md`). Apply the matching language-specific guidance below. If the language is not listed, infer conventions from the project's existing code and community standards.
@@ -79,13 +79,13 @@ Before writing tests:
 
 ```powershell
 BeforeAll {
-    Import-Module "$PSScriptRoot/../../src/GoogleRecorderClient/GoogleRecorderClient.psd1" -Force
+    Import-Module "$PSScriptRoot/../../src/Project/Project.psd1" -Force
 }
 
 Describe 'Recording Retrieval Flow' {
     BeforeAll {
         # Set up shared state for this feature's tests
-        Mock Invoke-RestMethod { return @{ recordings = @() } } -ModuleName GoogleRecorderClient
+        Mock Invoke-RestMethod { return @{ recordings = @() } } -ModuleName Project
     }
 
     Context 'When user is authenticated and requests recordings' {
@@ -96,7 +96,7 @@ Describe 'Recording Retrieval Flow' {
                     @{ recordingId = '1'; title = 'Meeting Notes' }
                     @{ recordingId = '2'; title = 'Voice Memo' }
                 )
-            } -ModuleName GoogleRecorderClient
+            } -ModuleName Project
 
             # Act
             $results = Get-GoogleRecording
@@ -110,7 +110,7 @@ Describe 'Recording Retrieval Flow' {
             # Arrange
             Mock Invoke-RecorderRpc {
                 return @{ recordingId = '1'; title = 'Meeting Notes' }
-            } -ModuleName GoogleRecorderClient
+            } -ModuleName Project
 
             # Act
             $result = Get-GoogleRecording -RecordingId '1'
